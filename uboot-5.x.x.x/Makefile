@@ -1674,6 +1674,11 @@ tb0229_config: unconfig
 
 rt2880_config: unconfig
 	@./mkconfig $(@:_config=) mips ralink_soc rt2880
+
+mi_r4ag_config: unconfig
+	@./mkconfig rt2880 mips ralink_soc rt2880
+	@cp $$TOPDIR/../profiles/XIAOMI/MI-R4AG_SPI/config .config
+
 #########################################################################
 ## MIPS32 AU1X00
 #########################################################################
