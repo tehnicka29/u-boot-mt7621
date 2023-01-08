@@ -1675,9 +1675,16 @@ tb0229_config: unconfig
 rt2880_config: unconfig
 	@./mkconfig $(@:_config=) mips ralink_soc rt2880
 
+mi_r4ag_docker_config	\
 mi_r4ag_config: unconfig
 	@./mkconfig rt2880 mips ralink_soc rt2880
+	@cp $$TOPDIR/../profiles/XIAOMI/MI-R4AG_SPI/autoconf.h .
 	@cp $$TOPDIR/../profiles/XIAOMI/MI-R4AG_SPI/config .config
+	@[ -z "$(findstring _docker,$@)" ] || \
+		{ echo '#define CONFIG_CROSS_COMPILER_PATH "/opt/toolchain/mips-2012.03/bin"' >> autoconf.h ; \
+		  echo CONFIG_CROSS_COMPILER_PATH=/opt/toolchain/mips-2012.03/bin >> .config ; \
+		  echo "... with docker based toolchain" ; \
+		}
 
 #########################################################################
 ## MIPS32 AU1X00
