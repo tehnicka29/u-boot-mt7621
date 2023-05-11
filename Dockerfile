@@ -4,7 +4,8 @@ ADD toolchain/mips-2012.03.tar.xz /opt/toolchain
 
 RUN apt update && apt install -y libc6 libstdc++6 \
         make libncurses-dev gcc zlib1g-dev \
-        xxd bc
+        xxd bc \
+        faketime
 
 WORKDIR /src
 RUN umask 0002
