@@ -1,3 +1,16 @@
+#ifdef CONFIG_QMALLOC
+
+#include <linux/string.h>
+
+void *malloc(size_t size);
+void free(void *ptr);
+void *realloc(void *ptr, size_t size);
+void *memalign(size_t alignment, size_t size);
+
+void m_init(void *buf, size_t size);
+
+#else /* !CONFIG_QMALLOC */
+
 /*
   A version of malloc/free/realloc written by Doug Lea and released to the
   public domain.  Send questions/comments/complaints/performance data
@@ -939,3 +952,5 @@ struct mallinfo mALLINFo();
 #ifdef __cplusplus
 };  /* end of extern "C" */
 #endif
+
+#endif /* !CONFIG_QMALLOC */

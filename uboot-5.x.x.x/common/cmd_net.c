@@ -27,9 +27,8 @@
 #include <common.h>
 #include <command.h>
 #include <net.h>
-#undef DEBUG
-#if (CONFIG_COMMANDS & CFG_CMD_NET)
 
+#if (CONFIG_COMMANDS & CFG_CMD_NET)
 
 extern int do_bootm (cmd_tbl_t *, int, int, char *[]);
 extern int modifies;
@@ -50,6 +49,7 @@ U_BOOT_CMD(
 #endif
 #endif
 
+#ifdef TFTP_SUPPORT
 int do_tftpb (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 {
 #ifdef DEBUG
@@ -66,8 +66,10 @@ U_BOOT_CMD(
 );
 #endif
 
-#ifdef RT2880_U_BOOT_CMD_OPEN
+#endif /* TFTP_SUPPORT */
+
 #ifdef RALINK_CMDLINE
+#ifdef RT2880_U_BOOT_CMD_OPEN
 int do_rarpb (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 {
 	return netboot_common (RARP, cmdtp, argc, argv);
@@ -78,7 +80,6 @@ U_BOOT_CMD(
 	"rarpboot- boot image via network using RARP/TFTP protocol\n",
 	"[loadAddress] [bootfilename]\n"
 );
-#endif
 #endif
 
 #if (CONFIG_COMMANDS & CFG_CMD_HTTPD)
@@ -104,6 +105,7 @@ U_BOOT_CMD(
 	"\n"
 );
 #endif	/* CFG_CMD_DHCP */
+#endif /* RALINK_CMDLINE */
 
 #if (CONFIG_COMMANDS & CFG_CMD_NFS)
 int do_nfs (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
@@ -253,11 +255,10 @@ netboot_common (int proto, cmd_tbl_t *cmdtp, int argc, char *argv[])
 	return rcode;
 }
 
+#ifdef RALINK_CMDLINE
 #if (CONFIG_COMMANDS & CFG_CMD_PING)
-int do_ping (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
+static int do_ping (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 {
-	
-
 	if (argc < 2)
 		return -1;
     
@@ -283,52 +284,6 @@ U_BOOT_CMD(
 	"pingAddress\n"
 );
 #endif	/* CFG_CMD_PING */
-
-#if (CONFIG_COMMANDS & CFG_CMD_CDP)
-
-static void cdp_update_env(void)
-{
-	char tmp[16];
-
-	if (CDPApplianceVLAN != htons(-1)) {
-		printf("CDP offered appliance VLAN %d\n", ntohs(CDPApplianceVLAN));
-		VLAN_to_string(CDPApplianceVLAN, tmp);
-		setenv("vlan", tmp);
-#ifdef CONFIG_NET_VLAN
-		NetOurVLAN = CDPApplianceVLAN;
-#endif
-	}
-
-	if (CDPNativeVLAN != htons(-1)) {
-		printf("CDP offered native VLAN %d\n", ntohs(CDPNativeVLAN));
-		VLAN_to_string(CDPNativeVLAN, tmp);
-		setenv("nvlan", tmp);
-#ifdef CONFIG_NET_VLAN
-		NetOurNativeVLAN = CDPNativeVLAN;
-#endif
-	}
-
-}
-
-int do_cdp (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
-{
-	int r;
-
-	r = NetLoop(CDP);
-	if (r < 0) {
-		printf("cdp failed; perhaps not a CISCO switch?\n");
-		return 1;
-	}
-
-	cdp_update_env();
-
-	return 0;
-}
-
-U_BOOT_CMD(
-	cdp,	1,	1,	do_cdp,
-	"cdp\t- Perform CDP network configuration\n",
-);
-#endif	/* CFG_CMD_CDP */
+#endif /* RALINK_CMDLINE */
 
 #endif	/* CFG_CMD_NET */

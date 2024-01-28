@@ -5,13 +5,8 @@
 #include <cmd_tftpServer.h>
 #include <configs/rt2880.h>
 #include <spi_api.h>
-#include <nand_api.h>
 #include <malloc.h>
 #include "../autoconf.h"
-
-#ifdef CFG_DIRECT_FLASH_TFTP
-extern flash_info_t flash_info[CFG_MAX_FLASH_BANKS];/* info for FLASH chips   */
-#endif
 
 static int	TftpServerPort;		/* The UDP port at their end		*/
 static int	TftpOurPort;		/* The UDP port at our end		*/
@@ -28,11 +23,9 @@ static unsigned char *image_ptr;
 static uint32_t image_len;
 static uint16_t RescueAckFlag;
 
-extern IPaddr_t TempServerIP;
-extern image_header_t header;
-extern int do_bootm(cmd_tbl_t *, int, int, char *[]);
+static IPaddr_t TempServerIP = 0;
+
 extern int do_reset(cmd_tbl_t *, int, int, char *[]);
-extern int verify_kernel_image(ulong, ulong *, ulong *, ulong *);
 extern int flash_kernel_image(ulong image_ptr, ulong image_size);
 extern int flash_kernel_image_from_usb(cmd_tbl_t *cmdtp);
 extern int reset_to_default(void);
@@ -42,6 +35,7 @@ extern void perform_system_reset(void);
 
 int do_tftpd(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 {
+#if 0
 	const int press_times = 1;
 	int i = 0;
 
@@ -84,6 +78,7 @@ int do_tftpd(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 		}
 	}
 	else
+#endif
 	{
 		ulong addr_src;
 
@@ -93,8 +88,7 @@ int do_tftpd(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 			addr_src = simple_strtoul(argv[1], NULL, 16);
 		}
 
-		memset(&header, 0, sizeof(header));
-		if (verify_kernel_image(addr_src, NULL, NULL, NULL) <= 0) {
+		if (verify_kernel_image(addr_src, NULL, NULL, NULL, 1) <= 0) {
 			printf(" \n## Enter to Rescue Mode (%s) ##\n", "image error");
 
 			LED_ALERT_ON();

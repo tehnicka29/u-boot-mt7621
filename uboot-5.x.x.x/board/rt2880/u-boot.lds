@@ -36,18 +36,15 @@ SECTIONS
 	. = ALIGN(4);
 	.text       :
 	{
-	  *(.text)
+	  *(.start)
+	  *(.text*)
 	}
 
 	. = ALIGN(4);
 	.rodata  : { *(.rodata) }
 
 	. = ALIGN(4);
-
 	.data  : { *(.data) }
-
-	. = ALIGN(4);
-	.sdata  : { *(.sdata) }
 
 	_gp = ALIGN(16);
 
@@ -60,7 +57,7 @@ SECTIONS
 	.sdata  : { *(.sdata) }
 
 	__u_boot_cmd_start = .;
-	.u_boot_cmd : { *(.u_boot_cmd) }
+	.u_boot_cmd : {	KEEP(*(SORT(.u_boot_cmd))); }
 	__u_boot_cmd_end = .;
 
 	uboot_end_data = .;
@@ -72,8 +69,3 @@ SECTIONS
 
 	uboot_end = .;
 }
-
-
-
-
-

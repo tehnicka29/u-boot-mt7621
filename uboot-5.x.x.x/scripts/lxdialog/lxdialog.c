@@ -36,15 +36,15 @@ jumperFn j_msgbox, j_infobox;
 
 static struct Mode modes[] =
 {
-    {"--menu", 9, 0, 3, j_menu},
-    {"--checklist", 9, 0, 3, j_checklist},
-    {"--radiolist", 9, 0, 3, j_radiolist},
-    {"--yesno",    5,5,1, j_yesno},
-    {"--textbox",  5,5,1, j_textbox},
-    {"--inputbox", 5, 6, 1, j_inputbox},
-    {"--msgbox", 5, 5, 1, j_msgbox},
-    {"--infobox", 5, 5, 1, j_infobox},
-    {NULL, 0, 0, 0, NULL}
+	{"--menu", 9, 0, 3, j_menu},
+	{"--checklist", 9, 0, 3, j_checklist},
+	{"--radiolist", 9, 0, 3, j_radiolist},
+	{"--yesno",    5,5,1, j_yesno},
+	{"--textbox",  5,5,1, j_textbox},
+	{"--inputbox", 5, 6, 1, j_inputbox},
+	{"--msgbox", 5, 5, 1, j_msgbox},
+	{"--infobox", 5, 5, 1, j_infobox},
+	{NULL, 0, 0, 0, NULL}
 };
 
 static struct Mode *modePtr;
@@ -56,30 +56,30 @@ static struct Mode *modePtr;
 int
 main (int argc, const char * const * argv)
 {
-    int offset = 0, clear_screen = 0, end_common_opts = 0, retval;
-    const char *title = NULL;
+	int offset = 0, clear_screen = 0, end_common_opts = 0, retval;
+	const char *title = NULL;
 
 #ifdef LOCALE
-    (void) setlocale (LC_ALL, "");
+	(void) setlocale (LC_ALL, "");
 #endif
 
 #ifdef TRACE
-    trace(TRACE_CALLS|TRACE_UPDATE);
+	trace(TRACE_CALLS|TRACE_UPDATE);
 #endif
-    if (argc < 2) {
-	Usage (argv[0]);
-	exit (-1);
-    }
-
-    while (offset < argc - 1 && !end_common_opts) {	/* Common options */
-	if (!strcmp (argv[offset + 1], "--title")) {
-	    if (argc - offset < 3 || title != NULL) {
+	if (argc < 2) {
 		Usage (argv[0]);
 		exit (-1);
-	    } else {
-		title = argv[offset + 2];
-		offset += 2;
-	    }
+	}
+
+	while (offset < argc - 1 && !end_common_opts) {	/* Common options */
+	if (!strcmp (argv[offset + 1], "--title")) {
+		if (argc - offset < 3 || title != NULL) {
+			Usage (argv[0]);
+			exit (-1);
+		} else {
+			title = argv[offset + 2];
+			offset += 2;
+		}
         } else if (!strcmp (argv[offset + 1], "--backtitle")) {
             if (backtitle != NULL) {
                 Usage (argv[0]);
@@ -90,50 +90,51 @@ main (int argc, const char * const * argv)
             }
 	} else if (!strcmp (argv[offset + 1], "--clear")) {
 	    if (clear_screen) {	/* Hey, "--clear" can't appear twice! */
+			Usage (argv[0]);
+			exit (-1);
+		} else if (argc == 2) {	/* we only want to clear the screen */
+			init_dialog ();
+			refresh ();	/* init_dialog() will clear the screen for us */
+			end_dialog ();
+			return 0;
+		} else {
+			clear_screen = 1;
+			offset++;
+		}
+	} else			/* no more common options */
+		end_common_opts = 1;
+	}
+
+	if (argc - 1 == offset) {	/* no more options */
 		Usage (argv[0]);
 		exit (-1);
-	    } else if (argc == 2) {	/* we only want to clear the screen */
-		init_dialog ();
-		refresh ();	/* init_dialog() will clear the screen for us */
-		end_dialog ();
-		return 0;
-	    } else {
-		clear_screen = 1;
-		offset++;
-	    }
-	} else			/* no more common options */
-	    end_common_opts = 1;
-    }
+	}
 
-    if (argc - 1 == offset) {	/* no more options */
-	Usage (argv[0]);
-	exit (-1);
-    }
-    /* use a table to look for the requested mode, to avoid code duplication */
+	/* use a table to look for the requested mode, to avoid code duplication */
 
-    for (modePtr = modes; modePtr->name; modePtr++)	/* look for the mode */
-	if (!strcmp (argv[offset + 1], modePtr->name))
-	    break;
+	for (modePtr = modes; modePtr->name; modePtr++)	/* look for the mode */
+		if (!strcmp (argv[offset + 1], modePtr->name))
+			break;
 
-    if (!modePtr->name)
-	Usage (argv[0]);
-    if (argc - offset < modePtr->argmin)
-	Usage (argv[0]);
-    if (modePtr->argmax && argc - offset > modePtr->argmax)
-	Usage (argv[0]);
+	if (!modePtr->name)
+		Usage (argv[0]);
 
+	if (argc - offset < modePtr->argmin)
+		Usage (argv[0]);
 
+	if (modePtr->argmax && argc - offset > modePtr->argmax)
+		Usage (argv[0]);
 
-    init_dialog ();
-    retval = (*(modePtr->jumper)) (title, argc - offset, argv + offset);
+	init_dialog ();
+	retval = (*(modePtr->jumper)) (title, argc - offset, argv + offset);
 
-    if (clear_screen) {		/* clear screen before exit */
-	attr_clear (stdscr, LINES, COLS, screen_attr);
-	refresh ();
-    }
-    end_dialog();
+	if (clear_screen) {		/* clear screen before exit */
+		attr_clear (stdscr, LINES, COLS, screen_attr);
+		refresh ();
+	}
+	end_dialog();
 
-    exit (retval);
+	exit (retval);
 }
 
 /*
@@ -205,11 +206,17 @@ j_yesno (const char *t, int ac, const char * const * av)
 int
 j_inputbox (const char *t, int ac, const char * const * av)
 {
-    int ret = dialog_inputbox (t, av[2], atoi (av[3]), atoi (av[4]),
-                            ac == 6 ? av[5] : (char *) NULL);
-    if (ret == 0)
-        fprintf(stderr, dialog_input_result);
-    return ret;
+	int ret = dialog_inputbox (t, av[2], atoi (av[3]), atoi (av[4]),
+							ac == 6 ? av[5] : (char *) NULL);
+	if (ret == 0) {
+		fprintf(stderr, "%s", dialog_input_result);
+	} else if (ret == -1 && ac == 6) {
+		/* ESC pressed, return default value */
+		fprintf(stderr, "%s", av[5]);
+		ret = 0;
+	}
+
+	return ret;
 }
 
 int

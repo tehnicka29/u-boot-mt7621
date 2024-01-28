@@ -6,6 +6,8 @@
 #include <ArchDefs.h>
 #include <launch.h>
 
+// #define CHECK_NMI
+
 #define CODE_ALIGN      .align  2
 
 #define LEAF(name)\
@@ -18,8 +20,6 @@ name:
     .##size name,.-name;\
     .##end  name
 
-#define CONFIG_SYS_SDRAM_BASE           0x80000000      /* Cached addr */
-#define CONFIG_SYS_INIT_SP_OFFSET       CFG_INIT_SP_OFFSET
 #define CONFIG_SYS_MONITOR_BASE		TEXT_BASE
 
 #define WAITCODE_IN_RAM		0xA0000D00
@@ -36,8 +36,8 @@ name:
 #define GCR_CPC_BASE        0xbfbf8088
 #define GCR_CPC_STATUS      0xbfbf80f0
 
-#define MALTA_DISP_ADDR     0xbf000410
-#define STACK_BASE_ADDR     CONFIG_SYS_SDRAM_BASE + CFG_INIT_SP_OFFSET  /* fixme: Base on memory size. */
+//#define MALTA_DISP_ADDR     0xbf000410
+#define STACK_BASE_ADDR     CFG_SDRAM_BASE + CFG_INIT_SP_OFFSET  /* fixme: Base on memory size. */
 #define STACK_SIZE_LOG2     22          /* 4Mbytes each */
 #define CPC_GLOBAL_OFS      0xbfbf0000                       /* CPC base address */
 #define GCR_CPC_BASE_VALUE  0x1fbf0000                       /* CPC base address value */
@@ -58,8 +58,10 @@ name:
 	li k0,bev
 
 	.set noreorder
+
+	.section .start,"ax",@progbits
 	.globl _start
-	.text
+
 _start:
 	RVECENT(reset,0)			# U-boot entry point
 	RVECENT(reset,1)			# software reboot
@@ -197,8 +199,10 @@ _start:
 	 */
 	.align 4
 reset:
-    b	__reset_vector
+#ifdef CHECK_NMI
+	b	__reset_vector
 	nop
+#endif
 
 /**************************************************************************************
  Register use while executing in this file: ("GLOBAL" denotes a common value.)
@@ -222,7 +226,7 @@ reset:
 #define r21_more_tcs    $21  /* Number of tcs in vpe in addition to the first. */ 
 #define r22_gcr_addr    $22  /* Uncached (kseg1) base address of the Global Config Registers. */
 #define r23_cpu_num     $23  /* Unique per vpe "cpu" identifier (CP0 EBase[CPUNUM]). */
-#define r24_malta_word  $24  /* Uncached (kseg1) base address of Malta ascii display. GLOBAL! */
+//#define r24_malta_word  $24  /* Uncached (kseg1) base address of Malta ascii display. GLOBAL! */
 #define r25_coreid      $25  /* Copy of cp0 PRiD GLOBAL! */
 
 #define r26_int_addr    $26  /* Interrupt handler scratch address. */
@@ -253,14 +257,21 @@ reset:
 	.set	noreorder           # Don't allow the assembler to reorder instructions.
 	.set    noat                # Don't allow the assembler to use r1(at) for synthetic instr.
 
-LEAF(__reset_vector)
-    b       check_nmi               # Note: Real systems might want to save/dump full context.
+__reset_vector:
+#ifdef CHECK_NMI
+    b       check_nmi           # Note: Real systems might want to save/dump full context.
+#endif
     mtc0    $0, $9              # Clear cp0 Count (Used to measure boot time.)
 
     # Note: adding code here may conflict with Malta board ID register at 0xbfc0010.
 
-END(__reset_vector)
+    # MT7530 reset assert
+    li  t0, RALINK_SYSCTL_BASE
+    lw  t1, 0x34(t0) # RALINK_RSTCTRL_REG
+    ori t1, (1 << 2) # |= RALINK_MCM_RST
+    sw  t1, 0x34(t0)
 
+#ifdef CHECK_NMI
 /**************************************************************************************
     B O O T   E X C E P T I O N   H A N D L E R S
 **************************************************************************************/
@@ -326,6 +337,7 @@ is_mips32:
     bnez    r7_temp_mark, init_vpe_resources    # Continue if ISA is MIPS32r2 or later.
     nop
     sdbbp                                       # Failed assertion mips32r2.
+#endif /* CHECK_NMI */
 
 /**************************************************************************************
  What is initialized on execution depends on the core/vpe executing it.
@@ -487,7 +499,7 @@ waitcode_end:
 
 finish_initialisation:	
 	/* Set up temporary stack */
-	li	t0, CONFIG_SYS_SDRAM_BASE + CONFIG_SYS_INIT_SP_OFFSET
+	li	t0, CFG_SDRAM_BASE + CFG_INIT_SP_OFFSET
 	la	sp, 0(t0)
 	set_tag 0x06
 	lui	t9, %hi(board_init_f)
@@ -556,7 +568,9 @@ set_gpr_boot_values:
     li      r1_all_ones, 0xffffffff             # Simplify code and improve clarity
     mfc0    r4_temp_data, $15, 1                # Read CP0 EBase
 	ext	    r23_cpu_num, r4_temp_data, 0, 4     # Extract CPUNum
+#ifdef MALTA_DISP_ADDR
     li      r24_malta_word, MALTA_DISP_ADDR     # Need for reporting failed assertions.
+#endif
     lui     r28_global_addr, %hi(_gp)                # All vpe share globals.
 	addiu	r28_global_addr, %lo(_gp)
     li      r29_stack_addr, STACK_BASE_ADDR     # Each vpe gets it's own stack.
@@ -609,7 +623,7 @@ is_not_cps: # This processor is not part of a Coherent Processing System. Set up
 is_cps:
 	li      r3_is_cps, 1
 
-	//MTK: access 1fbf8008 will cause excption??
+	//MTK: access 1fbf8008 will cause exception??
     # Verify that we can find the GCRs.
 	li	    r5_temp_addr, GCR_CONFIG           # KSEG1(GCRBASE)
 	lw	    r4_temp_data, 0x0008(r5_temp_addr) # GCR_BASE
@@ -938,12 +952,9 @@ done_gic:
 Hardcoded Denali Databahn DRAM controller initialization.
 **************************************************************************************/
 init_mc:
-#ifdef UBOOT_ROM
+// #ifdef UBOOT_ROM
 //#define USE_PCIE_SRAM				1
 #define FE_SRAM_STACK                0xBE108000
-#define RALINK_CLKCFG0_REG     		(RALINK_SYSCTL_BASE+0x2C)
-#define RALINK_RSTCTRL_REG     		(RALINK_SYSCTL_BASE+0x34)
-
 
 	//set SPI clock to system bus /(5+2)
 	li	t0, RALINK_SPI_BASE + 0x3c
@@ -1139,21 +1150,21 @@ DDR_INIT_DONE:
         and t1, t1, t2
 	ori t1, 1 //reset PSE
         sw  t1, 0(t0)
-#else	
+// #else // !UBOOT_ROM //
 // Reset PSE
-#if 1
-	li 	t0, 0xBE00080C
-	lw	t1, 0(t0)
-	srl	t1, t1, 1
-	sll	t1, t1, 1
-	sw	t1, 0(t0)
-	
-	li 	t0, 0xBE100004
-	lw 	t1, 0(t0)
-	li	t1, 0x1
-	sw	t1, 0(t0)
-#endif			
-#endif // UBOOT_ROM //
+// #if 1
+//	li 	t0, 0xBE00080C
+//	lw	t1, 0(t0)
+//	srl	t1, t1, 1
+//	sll	t1, t1, 1
+//	sw	t1, 0(t0)
+//	
+//	li 	t0, 0xBE100004
+//	lw 	t1, 0(t0)
+//	li	t1, 0x1
+//	sw	t1, 0(t0)
+// #endif			
+// #endif // !UBOOT_ROM //
 COPY_WAITCODE:
 	lui	t0, %hi(waitcode_start)
 	addiu	t0, t0, %lo(waitcode_start)
@@ -1847,10 +1858,15 @@ done_init_vpe1:
  * Each VPE has at least one TC. TCs beyond the number of VPEs are bound to the highest numbered VPE.
  */
 
-#define r4_temp_data    $20
-#define r5_temp_addr    $21
-#define r6_temp_dest    $22
-#define r7_temp_mark    $23
+#undef r4_temp_data
+#undef r5_temp_addr
+#undef r6_temp_dest
+#undef r7_temp_mark
+
+//#define r4_temp_data    $20
+//#define r5_temp_addr    $21
+//#define r6_temp_dest    $22
+//#define r7_temp_mark    $23
 /*
  * void relocate_code (addr_sp, gd, addr_moni)
  *
@@ -1867,20 +1883,20 @@ done_init_vpe1:
 relocate_code:
 	move	sp, a0			# set new stack pointer
 
-	li	t0, CONFIG_SYS_MONITOR_BASE
+	li		t0, CFG_MONITOR_BASE
 	lui	t3, %hi(in_ram)
 	addiu	t3, t3, %lo(in_ram)
-	lw	t2, -12(t3)		# t2 <-- uboot_end_data
+	lw		t2, -12(t3)		# t2 <-- uboot_end_data
 	move	t1, a2
 	move	s2, a2			# s2 <-- destination address
 
 	/*
 	 * Fix $gp:
 	 *
-	 * New $gp = (Old $gp - CONFIG_SYS_MONITOR_BASE) + Destination Address
+	 * New $gp = (Old $gp - CFG_MONITOR_BASE) + Destination Address
 	 */
 	move	t6, gp
-	sub	gp, CONFIG_SYS_MONITOR_BASE
+	sub	gp, CFG_MONITOR_BASE
 	add	gp, a2			# gp now adjusted
 	sub	s1, gp, t6		# s1 <-- relocation offset
 
@@ -1895,19 +1911,19 @@ relocate_code:
 	 */
 	move	s0, a1			# save gd in s0
 	move	a0, t1			# a0 <-- destination addr
-	sub	a1, t2, t0		# a1 <-- size
+	sub		a1, t2, t0		# a1 <-- size
 
 1:
-	lw	t3, 0(t0)
-	sw	t3, 0(t1)
+	lw		t3, 0(t0)
+	sw		t3, 0(t1)
 	addu	t0, 4
-	ble	t0, t2, 1b
-	 addu	t1, 4
+	ble		t0, t2, 1b
+	addu	t1, 4
 
 	/* If caches were enabled, we would have to flush them here. */
 
 	/* a0 & a1 are already set up for flush_cache(start, size) */
-	//la	t9, flush_cache
+	//la		t9, flush_cache
 	//jalr	t9
 	//nop
 
@@ -1915,10 +1931,10 @@ relocate_code:
 	/* Jump to where we've relocated ourselves */
 	addi	t0, s2, in_ram - _start
 	jr	t0
-	 nop
+	nop
 
 	.word	_gp
-	.word	_GLOBAL_OFFSET_TABLE_
+	.word	__got_start
 	.word	uboot_end_data
 	.word	uboot_end
 	.word	num_got_entries
@@ -1931,47 +1947,47 @@ in_ram:
 	 * GOT[0] is reserved. GOT[1] is also reserved for the dynamic object
 	 * generated by GNU ld. Skip these reserved entries from relocation.
 	 */
-	lw	t3, -4(t0)		# t3 <-- num_got_entries
-	lw	t4, -16(t0)		# t4 <-- _GLOBAL_OFFSET_TABLE_
-	lw	t5, -20(t0)		# t5 <-- _gp
-	sub	t4, t5			# compute offset
-	add	t4, t4, gp		# t4 now holds relocated _G_O_T_
+	lw		t3, -4(t0)		# t3 <-- num_got_entries
+	lw		t4, -16(t0)		# t4 <-- _GLOBAL_OFFSET_TABLE_
+	lw		t5, -20(t0)		# t5 <-- _gp
+	sub		t4, t5			# compute offset
+	add		t4, t4, gp		# t4 now holds relocated _G_O_T_
 	addi	t4, t4, 8		# skipping first two entries
-	li	t2, 2
+	li		t2, 2
 1:
-	lw	t1, 0(t4)
+	lw		t1, 0(t4)
 	beqz	t1, 2f
-	 add	t1, s1
-	sw	t1, 0(t4)
+	add		t1, s1
+	sw		t1, 0(t4)
 2:
 	addi	t2, 1
-	blt	t2, t3, 1b
-	 addi	t4, 4
+	blt		t2, t3, 1b
+	addi	t4, 4
 
 	/* Clear BSS */
-	lw	t1, -12(t0)		# t1 <-- uboot_end_data
-	lw	t2, -8(t0)		# t2 <-- uboot_end
-	add	t1, s1			# adjust pointers
-	add	t2, s1
+	lw		t1, -12(t0)		# t1 <-- uboot_end_data
+	lw		t2, -8(t0)		# t2 <-- uboot_end
+	add		t1, s1			# adjust pointers
+	add		t2, s1
 
-	sub	t1, 4
+	sub		t1, 4
 1:
 	addi	t1, 4
 	bltl	t1, t2, 1b
-	 sw	zero, 0(t1)
+	sw		zero, 0(t1)
 
 	set_tag	0x9
 	move	a0, s0			# a0 <-- gd
-	lui	t9, %hi(board_init_r)
+	lui		t9, %hi(board_init_r)
 	addiu	t9, t9, %lo(board_init_r)
 #if 1	/* VIOSOFT: FIXME */
-	lui	t8, %hi(_start)
+	lui		t8, %hi(_start)
 	addiu	t8, t8, %lo(_start)
-	sub	t9, t8
-	add	t9, s2, t9
+	sub		t9, t8
+	add		t9, s2, t9 /* t9 = dest_addr + (board_init_r - start) */
 #endif	/* VIOSOFT */
-	jr	t9
-	 move	a1, s2
+	jr		t9
+	move	a1, s2
 
 	.end	relocate_code
 

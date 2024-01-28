@@ -81,12 +81,7 @@ int do_load_serial (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 			load_baudrate);
 		udelay(50000);
 		gd->baudrate = load_baudrate;
-#if defined(RT6855A_ASIC_BOARD) || defined(RT6855A_FPGA_BOARD)
-		bbu_uart_init();
-#else
-		serial_setbrg ();
-#endif
-
+		serial_init();
 		udelay(50000);
 		for (;;) {
 			if (getc() == '\r')
@@ -129,11 +124,7 @@ int do_load_serial (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 			current_baudrate);
 		udelay (50000);
 		gd->baudrate = current_baudrate;
-#if defined(RT6855A_ASIC_BOARD) || defined(RT6855A_FPGA_BOARD)
-		bbu_uart_init();
-#else
-		serial_setbrg ();
-#endif
+		serial_init();
 		udelay (50000);
 		for (;;) {
 			if (getc() == 0x1B) /* ESC */
@@ -290,12 +281,7 @@ int do_save_serial (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 			save_baudrate);
 		udelay(50000);
 		gd->baudrate = save_baudrate;
-#if defined(RT6855A_ASIC_BOARD) || defined(RT6855A_FPGA_BOARD)
-		bbu_uart_init();
-#else
-		serial_setbrg ();
-#endif
-
+		serial_init();
 		udelay(50000);
 		for (;;) {
 			if (getc() == '\r')
@@ -324,12 +310,7 @@ int do_save_serial (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 			(int)current_baudrate);
 		udelay (50000);
 		gd->baudrate = current_baudrate;
-#if defined(RT6855A_ASIC_BOARD) || defined(RT6855A_FPGA_BOARD)
-		bbu_uart_init();
-#else
-		serial_setbrg ();
-#endif
-
+		serial_init();
 		udelay (50000);
 		for (;;) {
 			if (getc() == 0x1B) /* ESC */
@@ -486,12 +467,7 @@ int do_load_serial_bin (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 			load_baudrate);
 		udelay(50000);
 		gd->baudrate = load_baudrate;
-#if defined(RT6855A_ASIC_BOARD) || defined(RT6855A_FPGA_BOARD)
-		bbu_uart_init();
-#else
-		serial_setbrg ();
-#endif
-
+		serial_init();
 		udelay(50000);
 		for (;;) {
 			if (getc() == '\r')
@@ -519,12 +495,7 @@ int do_load_serial_bin (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 			current_baudrate);
 		udelay (50000);
 		gd->baudrate = current_baudrate;
-#if defined(RT6855A_ASIC_BOARD) || defined(RT6855A_FPGA_BOARD)
-		bbu_uart_init();
-#else
-		serial_setbrg ();
-#endif
-
+		serial_init();
 		udelay (50000);
 		for (;;) {
 			if (getc() == 0x1B) /* ESC */

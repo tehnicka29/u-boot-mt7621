@@ -61,6 +61,8 @@ extern cmd_tbl_t  __u_boot_cmd_end;
 /* common/command.c */
 cmd_tbl_t *find_cmd(const char *cmd);
 
+int do_bootm( cmd_tbl_t *cmdtp, int flag, int argc, char *argv[] );
+
 #ifdef CONFIG_AUTO_COMPLETE
 extern void install_auto_complete(void);
 extern int cmd_auto_complete(const char *const prompt, char *buf, int *np, int *colp);
@@ -95,12 +97,12 @@ typedef	void 	command_t (cmd_tbl_t *, int, int, char *[]);
 #ifdef  CFG_LONGHELP
 
 #define U_BOOT_CMD(name,maxargs,rep,cmd,usage,help) \
-cmd_tbl_t __u_boot_cmd_##name Struct_Section = {#name, maxargs, rep, cmd, usage, help}
+__attribute__((used)) cmd_tbl_t __u_boot_cmd_##name Struct_Section = {#name, maxargs, rep, cmd, usage, help}
 
 #else	/* no long help info */
 
 #define U_BOOT_CMD(name,maxargs,rep,cmd,usage,help) \
-cmd_tbl_t __u_boot_cmd_##name Struct_Section = {#name, maxargs, rep, cmd, usage}
+__attribute__((used)) cmd_tbl_t __u_boot_cmd_##name Struct_Section = {#name, maxargs, rep, cmd, usage}
 
 #endif	/* CFG_LONGHELP */
 

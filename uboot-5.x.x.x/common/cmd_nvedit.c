@@ -43,7 +43,6 @@
 #include <command.h>
 #include <environment.h>
 #include <watchdog.h>
-#include <serial.h>
 #include <linux/stddef.h>
 #include <asm/byteorder.h>
 #include <rt_mmap.h>
@@ -61,9 +60,6 @@
     !defined(CFG_ENV_IS_NOWHERE)
 # error Define one of CFG_ENV_IS_IN_{NVRAM|EEPROM|FLASH|DATAFLASH|SPI|NOWHERE}
 #endif
-
-#define XMK_STR(x)	#x
-#define MK_STR(x)	XMK_STR(x)
 
 /************************************************************************
 ************************************************************************/
@@ -221,11 +217,6 @@ int _do_setenv (int flag, int argc, char *argv[])
 			/* Try assigning specified device */
 			if (console_assign (console, argv[2]) < 0)
 				return 1;
-
-#ifdef CONFIG_SERIAL_MULTI
-			if (serial_assign (argv[2]) < 0)
-				return 1;
-#endif
 		}
 
 		/*
@@ -247,16 +238,7 @@ int _do_setenv (int flag, int argc, char *argv[])
 				baudrate);
 			udelay(50000);
 			gd->baudrate = baudrate;
-#ifdef CONFIG_PPC
-			gd->bd->bi_baudrate = baudrate;
-#endif
-
-#if defined(RT6855A_ASIC_BOARD) || defined(RT6855A_FPGA_BOARD)
-			bbu_uart_init();
-#else
-			serial_setbrg ();
-#endif
-
+			serial_init();
 			udelay(50000);
 			for (;;) {
 				if (getc() == '\r')
@@ -377,17 +359,6 @@ int _do_setenv (int flag, int argc, char *argv[])
 		return 0;
 	}
 #endif	/* CFG_CMD_NET */
-
-#ifdef CONFIG_AMIGAONEG3SE
-	if (strcmp(argv[1], "vga_fg_color") == 0 ||
-	    strcmp(argv[1], "vga_bg_color") == 0 ) {
-		extern void video_set_color(unsigned char attr);
-		extern unsigned char video_get_attr(void);
-
-		video_set_color(video_get_attr());
-		return 0;
-	}
-#endif	/* CONFIG_AMIGAONEG3SE */
 
 #if 0
 	if (strcmp(argv[1],"twe0") == 0) {
@@ -533,7 +504,7 @@ char *getenv (uchar *name)
 {
 	int i, nxt;
 
-	WATCHDOG_RESET();
+	//WATCHDOG_RESET();
 
 	for (i=0; env_get_char(i) != '\0'; i=nxt+1) {
 		int val;
@@ -612,7 +583,6 @@ envmatch (uchar *s1, int i2)
 	return(-1);
 }
 
-
 #ifdef RALINK_CMDLINE
 /**************************************************/
 
@@ -641,8 +611,6 @@ U_BOOT_CMD(
 	"saveenv - save environment variables to persistent storage\n",
 	NULL
 );
-
-#endif
 #endif	/* CFG_CMD_ENV */
 
 #if (CONFIG_COMMANDS & CFG_CMD_ASKENV)
@@ -671,3 +639,5 @@ U_BOOT_CMD(
 	"    - run the commands in the environment variable(s) 'var'\n"
 );
 #endif  /* CFG_CMD_RUN */
+
+#endif

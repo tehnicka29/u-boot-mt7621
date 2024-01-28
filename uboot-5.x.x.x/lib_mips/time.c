@@ -55,13 +55,11 @@ __attribute__((nomips16)) int timer_init(void)
 	return 0;
 }
 
-
-__attribute__((nomips16)) ulong get_timer(ulong base)
+__attribute__((nomips16)) unsigned long get_timer(unsigned long base)
 {
 	//printf("%s = %x\n", __FUNCTION__, mips_count_get() );
 	return mips_count_get() - base;
 }
-
 
 __attribute__((nomips16)) void udelay (unsigned long usec)
 {
@@ -79,7 +77,7 @@ __attribute__((nomips16)) void mdelay(unsigned long msec)
 		udelay(1000);
 }
 
-#if 0
+#ifdef CONFIG_UNCOMPRESS_TIME
 /*
  * This function is derived from PowerPC code (read timebase as long long).
  * On MIPS it just returns the timer value.

@@ -1,26 +1,103 @@
 <!DOCTYPE HTML>
 <html>
-	<head>
-		<meta charset="utf-8">
-		<title>Firmware Update</title>
-		<link rel="stylesheet" href="style.css">
-	</head>
-	<body>
-		<div id="m">
-			<h1>FIRMWARE UPDATE</h1>
-			<p>You are going to update <strong>firmware</strong> on the device.<br>Please, choose file from your local hard drive and click <strong>Update firmware</strong> button.</p>
-			<form method="post" enctype="multipart/form-data"><input type="file" name="firmware"><input type="submit" value="Update firmware"></form>
-			<div class="i w">
-				<strong>WARNINGS</strong>
-				<ul>
-					<li>do not power off the device during update</li>
-					<li>if everything goes well, the device will restart</li>
-					<li>you can upload whatever you want, so be sure that you choose proper firmware image for your device</li>
-				</ul>
-              <p>&nbsp;</p>
-              <p><a href="uboot.html">UBOOT UPGRADE PAGE</a>&nbsp;- USE WITH CAUTION!</p>
-			  </div>
-			</div>
-			<div id="f">u-boot for mt7621 found on my <a href="https://github.com/db260179/u-boot_mod" target="_blank">GitHub repo</a></div>
-	</body>
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>U-Boot HTTP Recovery</title>
+	<link rel="stylesheet" href="style.css">
+</head>
+<body>
+	<div id="m">
+		<h1>U-Boot for MT7621</h1>
+		<button class="cl bt">U-BOOT</button>
+		<div class="ct">
+			<form method="post" enctype="multipart/form-data">
+				<input type="file" name="uboot">
+				<input type="submit" value="Update U-Boot">
+			</form>
+		</div>
+		<button class="cl">FIRMWARE</button>
+		<div class="ct">
+			<form method="post" enctype="multipart/form-data">
+				<input type="file" name="firmware">
+				<input type="submit" value="Update Firmware">
+			</form>
+		</div>
+		<button class="cl">CONFIG</button>
+		<div class="ct">
+			<form method="post" enctype="multipart/form-data">
+				<input type="file" name="config">
+				<input type="submit" value="Update Config">
+			</form>
+		</div>
+		<button class="cl">TPLINK</button>
+		<div class="ct">
+			<form method="post" enctype="multipart/form-data">
+				<input type="file" name="tplink">
+				<input type="submit" value="Update TPLink">
+			</form>
+		</div>
+		<button class="cl">RADIO/ART</button>
+		<div class="ct">
+			<form method="post" enctype="multipart/form-data">
+				<input type="file" name="radio">
+				<input type="submit" value="Update Radio">
+			</form>
+		</div>
+		<button class="cl ir">INITRAMFS</button>
+		<div class="ct">
+			<form method="post" enctype="multipart/form-data">
+				<input type="file" name="initramfs">
+				<input type="submit" value="Upload InitRAMFS">
+			</form>
+		</div>
+		<button class="cl rr">ROOTFS RESET</button>
+		<div class="ct">
+			<form method="post" enctype="application/x-www-form-urlencoded">
+				<input type="hidden" name= "rootfs_reset" value="1">
+				<input type="submit" value="Reset ROOTFS">
+			</form>
+		</div>
+<!--
+		<button class="cl">BACKUP</button>
+		<div class="ct">
+			<form method="post" action="dump.html">
+				<input type="submit" value="Save full flash dump">
+			</form>
+		</div>
+-->
+		<div class="i w">
+			<strong>WARNINGS</strong>
+			<ul>
+				<li>do not power off the device during update</li>
+				<li>if everything goes well, the device will restart</li>
+				<li>you can upload whatever you want, so <u>be sure that you choose proper firmware image for your device</u></li>
+				<li>updating <b>U-Boot</b> partition is a very dangerous operation and may damage your device!</li>
+			</ul>
+		</div>
+	</div>
+	<script>
+		var coll = document.getElementsByClassName( "cl" );
+		var i;
+		for (i = 0; i < coll.length; i++) {
+			coll[i].addEventListener("click", function() {
+					var content = this.nextElementSibling;
+					if (content.style.display !== "block") {
+						content.style.display = "block";
+						this.classList.add("active"); 
+					}
+					var cl = document.getElementsByClassName( "cl" );
+					var n;
+					for (n = 0; n < cl.length; n++) {
+						var ct = cl[n].nextElementSibling;
+						if ( ct != content ) {
+							cl[n].classList.remove("active");
+							ct.style.display = "none";
+						}
+					}
+				}
+			);
+		}
+	</script>
+</body>
 </html>

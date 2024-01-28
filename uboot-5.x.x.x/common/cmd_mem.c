@@ -29,12 +29,8 @@
 
 #include <common.h>
 #include <command.h>
-#if (CONFIG_COMMANDS & CFG_CMD_MMC)
-#include <mmc.h>
-#endif
-#ifdef CONFIG_HAS_DATAFLASH
-#include <dataflash.h>
-#endif
+
+typedef volatile unsigned long	vu_long;
 
 extern ulong		NetBootFileXferSize;
 
@@ -76,9 +72,9 @@ static int mod_mem(cmd_tbl_t *, int, int, int, char *[]);
 /* Display values from last command.
  * Memory modify remembered values are different from display memory.
  */
-uint	dp_last_addr, dp_last_size;
-uint	dp_last_length = 0x40;
-uint	mm_last_addr, mm_last_size;
+static uint	dp_last_addr, dp_last_size;
+static uint	dp_last_length = 0x40;
+static uint	mm_last_addr, mm_last_size;
 
 /* Memory Display
  *
@@ -136,32 +132,9 @@ int do_mem_md ( cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 		uint	*uip = (uint   *)linebuf;
 		ushort	*usp = (ushort *)linebuf;
 		u_char	*ucp = (u_char *)linebuf;
-#ifdef CONFIG_HAS_DATAFLASH
-		int rc;
-#endif
 		printf("%08lx:", addr);
 		linebytes = (nbytes>DISP_LINE_LEN)?DISP_LINE_LEN:nbytes;
 
-#ifdef CONFIG_HAS_DATAFLASH
-		if ((rc = read_dataflash(addr, (linebytes/size)*size, linebuf)) == DATAFLASH_OK){
-			/* if outside dataflash */
-			/*if (rc != 1) {
-				dataflash_perror (rc);
-				return (1);
-			}*/
-			for (i=0; i<linebytes; i+= size) {
-				if (size == 4) {
-					printf(" %08x", *uip++);
-				} else if (size == 2) {
-					printf(" %04x", *usp++);
-				} else {
-					printf(" %02x", *ucp++);
-				}
-				addr += size;
-			}
-
-		} else {	/* addr does not correspond to DataFlash */
-#endif
 		for (i=0; i<linebytes; i+= size) {
 			if (size == 4) {
 				printf(" %08x", (*uip++ = *((uint *)addr)));
@@ -172,9 +145,6 @@ int do_mem_md ( cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 			}
 			addr += size;
 		}
-#ifdef CONFIG_HAS_DATAFLASH
-		}
-#endif
 		puts ("    ");
 		cp = linebuf;
 		for (i=0; i<linebytes; i++) {
@@ -186,8 +156,7 @@ int do_mem_md ( cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 		}
 		putc ('\n');
 		nbytes -= linebytes;
-
-		
+	
 		
 		if (ctrlc()) {
 			rc = 1;
@@ -721,13 +690,6 @@ mod_mem(cmd_tbl_t *cmdtp, int incrflag, int flag, int argc, char *argv[])
 		addr += base_address;
 	}
 
-#ifdef CONFIG_HAS_DATAFLASH
-	if (addr_dataflash(addr)){
-		puts ("Can't modify DataFlash in place. Use cp instead.\n\r");
-		return 0;
-	}
-#endif
-
 	/* Print the address, followed by value.  Then accept input for
 	 * the next value.  A non-converted value exits.
 	 */
@@ -1119,9 +1081,6 @@ RT2880_START_WRITE_FLASH:
 #ifndef CFG_NO_FLASH
 	/* check if we are copying to Flash */
 	if ( (addr2info(dest) != NULL)
-#ifdef CONFIG_HAS_DATAFLASH
-	   && (!addr_dataflash(addr))
-#endif
 	   ) {
 		int rc;
 
@@ -1175,40 +1134,6 @@ RT2880_START_WRITE_FLASH:
 		}
 		puts ("done\n");
 		return 0;
-	}
-#endif
-
-#ifdef CONFIG_HAS_DATAFLASH
-	/* Check if we are copying from RAM or Flash to DataFlash */
-	if (addr_dataflash(dest) && !addr_dataflash(addr)){
-		int rc;
-
-		puts ("Copy to DataFlash... ");
-
-		rc = write_dataflash (dest, addr, count*size);
-
-		if (rc != 1) {
-			dataflash_perror (rc);
-			return (1);
-		}
-		puts ("done\n");
-		return 0;
-	}
-
-	/* Check if we are copying from DataFlash to RAM */
-	if (addr_dataflash(addr) && !addr_dataflash(dest) && (addr2info(dest)==NULL) ){
-		int rc;
-		rc = read_dataflash(addr, count * size, (char *) dest);
-		if (rc != 1) {
-			dataflash_perror (rc);
-			return (1);
-		}
-		return 0;
-	}
-
-	if (addr_dataflash(addr) && addr_dataflash(dest)){
-		puts ("Unsupported combination of source/destination.\n\r");
-		return 1;
 	}
 #endif
 

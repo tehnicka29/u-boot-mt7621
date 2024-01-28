@@ -1,46 +1,31 @@
 #
-# (C) Copyright 2000
-# Wolfgang Denk, DENX Software Engineering, wd@denx.de.
+# Copyright (C) 2000 Wolfgang Denk, DENX Software Engineering, wd@denx.de
 #
-# See file CREDITS for list of people who contributed to this
-# project.
-#
-# This program is free software; you can redistribute it and/or
-# modify it under the terms of the GNU General Public License as
-# published by the Free Software Foundation; either version 2 of
-# the License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston,
-# MA 02111-1307 USA
+# SPDX-License-Identifier: GPL-2.0
 #
 
 include $(TOPDIR)/config.mk
 
-# CFLAGS += -DET_DEBUG -DDEBUG
+OBJS-y	= net.o eth.o
 
-LIB	= libnet.a
-
-OBJS	= net.o tftp.o eth.o bootp.o sntp.o rarp.o
-ifeq ($(HTTPD_SUPPORT),y)
-OBJS	+= httpd.o
+ifeq ($(RARP_SUPPORT),y)
+OBJS-y	+= rarp.o
 endif
-all:	$(LIB)
 
-$(LIB):	$(START) $(OBJS)
-	$(AR) crv $@ $(OBJS)
+ifeq ($(SNTP_SUPPORT),y)
+OBJS-y	+= sntp.o
+endif
 
-#########################################################################
+ifeq ($(BOOTP_SUPPORT),y)
+OBJS-y	+= bootp.o
+endif
 
-.depend:	Makefile $(OBJS:.o=.c)
-		$(CC) -M $(CFLAGS) $(OBJS:.o=.c) > $@
+ifeq ($(TFTP_SUPPORT),y)
+OBJS-y	+= tftp.o
+endif
 
-sinclude .depend
+ifeq ($(HTTPD_SUPPORT),y)
+OBJS-y	+= httpd.o
+endif
 
-#########################################################################
+include $(TOPDIR)/end.mk

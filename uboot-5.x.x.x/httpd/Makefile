@@ -7,30 +7,13 @@ include $(TOPDIR)/config.mk
 # Suppress warnings when building with size optimization
 CFLAGS += -fno-strict-aliasing
 
-LIB   = libhttpd.a
-OBJS += uip.o \
-	uip_arch.o \
-	uip_arp.o \
-	httpd.o \
-	fs.o
+CFLAGS += -I$(obj)
 
-all: $(LIB)
+OBJS-y += uip.o uip_arch.o uip_arp.o httpd.o fs.o
 
-fs.c:	fsdata.c
+include $(TOPDIR)/end.mk
 
-fsdata.c:
-	@echo "Preparing web server files..."
-	@echo
-	./vendors/makefsdatac
+fs.c:	$(obj)fsdata.c
 
-$(LIB): $(OBJS)
-	$(AR) crv $@ $(OBJS)
-
-#########################################################################
-
-.depend: Makefile fsdata.c $(OBJS:.o=.c)
-	$(CC) -M $(CFLAGS) $(OBJS:.o=.c) > $@
-
-sinclude .depend
-
-#########################################################################
+$(obj)fsdata.c:
+	bash vendors/makefsdatac $(obj)fsdata.c

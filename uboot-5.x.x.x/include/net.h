@@ -109,6 +109,7 @@ struct eth_device {
 	void *priv;
 };
 
+extern void eth_preinit(void);
 extern int eth_initialize(bd_t *bis);		/* Initialize network subsystem */
 extern int eth_register(struct eth_device* dev);/* Register network device	*/
 extern void eth_try_another(int first_restart);	/* Change the device		*/
@@ -433,6 +434,8 @@ extern void	NetReceive(volatile uchar *, int);
 /* Print an IP address on the console */
 extern void	print_IPaddr (IPaddr_t);
 
+void TftpSend( void );
+
 /*
  * The following functions are a bit ugly, but necessary to deal with
  * alignment restrictions on ARM.
@@ -493,7 +496,7 @@ extern IPaddr_t getenv_IPaddr (char *);
 extern ushort getenv_VLAN(char *);
 
 /* copy a filename (allow for "..." notation, limit length) */
-extern void	copy_filename (uchar *dst, uchar *src, int size);
+extern void	copy_filename (uchar *dst, const uchar *src, int size);
 
 /**********************************************************************/
 

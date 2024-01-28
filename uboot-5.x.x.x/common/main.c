@@ -32,8 +32,6 @@
 #include <hush.h>
 #endif
 
-#include <post.h>
-
 #if defined(CONFIG_BOOT_RETRY_TIME) && defined(CONFIG_RESET_TO_RETRY)
 extern int do_reset (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[]);		/* for do_reset() prototype */
 #endif
@@ -57,7 +55,6 @@ static int abortboot(int);
 
 extern char console_buffer[CFG_CBSIZE];		/* console I/O buffer	*/
 
-#define CONFIG_CMD_HISTORY
 #ifdef CONFIG_CMD_HISTORY
 #define     HISTORY_SIZE	10
 char 		console_history[HISTORY_SIZE][CFG_CBSIZE];
@@ -452,13 +449,6 @@ void main_loop (void)
 	}
 #endif /* CONFIG_MENUKEY */
 #endif	/* CONFIG_BOOTDELAY */
-
-#ifdef CONFIG_AMIGAONEG3SE
-	{
-	    extern void video_banner(void);
-	    video_banner();
-	}
-#endif
 
 #ifndef CFG_HUSH_PARSER
         if (rc < 0) {

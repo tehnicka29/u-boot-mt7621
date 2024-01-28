@@ -25,16 +25,9 @@
 #include <command.h>
 #include <version.h>
 #include <asm/addrspace.h>
-//#include "LzmaDecode.h"
 
-#define MAX_SDRAM_SIZE	(256*1024*1024)
+#define MAX_SDRAM_SIZE	(DRAM_SIZE*1024*1024)
 #define MIN_SDRAM_SIZE	(8*1024*1024)
-
-#ifdef SDRAM_CFG_USE_16BIT
-#define MIN_RT2880_SDRAM_SIZE	(16*1024*1024)
-#else
-#define MIN_RT2880_SDRAM_SIZE	(32*1024*1024)
-#endif
 
 extern int do_reset(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[]);
 
@@ -55,7 +48,7 @@ long get_ram_size(volatile long *base, long maxsize)
 	for (cnt = (maxsize / sizeof (long)) >> 1; cnt > 0; cnt >>= 1) {
 		addr = base + cnt;	/* pointer arith! */
 		save[i++] = *addr;
-		
+
 		*addr = ~cnt;
 	}
 
@@ -83,9 +76,9 @@ long get_ram_size(volatile long *base, long maxsize)
 		*addr = save[--i];
 		if (val != ~cnt) {
 			size = cnt * sizeof (long);
-			
-		//	printf("\n The Addr[%08X],do back ring  \n",addr);
-			
+
+			//	printf("\n The Addr[%08X],do back ring  \n",addr);
+
 			/* Restore the original data before leaving the function.
 			 */
 			for (cnt <<= 1; cnt < maxsize / sizeof (long); cnt <<= 1) {
@@ -107,15 +100,6 @@ long int initdram(int board_type)
 	ulong our_address;
 #ifndef CONFIG_MIPS16
 	asm volatile ("move %0, $25" : "=r" (our_address) :);
-#endif
-
-#if defined (RT2880_FPGA_BOARD) || defined (RT2880_ASIC_BOARD)
-	if (PHYSADDR(our_address) < PHYSADDR(PHYS_FLASH_1))
-	{
-		//fixed to 32MB
-		printf("\n In RAM run \n");
-		return MIN_SDRAM_SIZE;
-	}
 #endif
 
 	size = get_ram_size((ulong *)CFG_SDRAM_BASE, MAX_SDRAM_SIZE);

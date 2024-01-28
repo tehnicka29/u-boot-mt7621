@@ -36,12 +36,12 @@ extern const struct fsdata_file file_fail_html;
 extern int webfailsafe_ready_for_upgrade;
 extern int webfailsafe_upgrade_type;
 extern ulong NetBootFileXferSize;
-extern unsigned char *webfailsafe_data_pointer;
-
-extern flash_info_t flash_info[];
 
 // http app state
 struct httpd_state *hs;
+
+static unsigned char *webfailsafe_data_pointer;
+unsigned char *webfailsafe_data_pointer_base;
 
 static int webfailsafe_post_done = 0;
 static int webfailsafe_upload_failed = 0;
@@ -96,14 +96,17 @@ static void httpd_state_reset(void){
 
 	if(boundary_value){
 		free(boundary_value);
+		boundary_value = NULL;
 	}
 }
 
 // find and get first chunk of data
 static int httpd_findandstore_firstchunk(void){
+
+	DECLARE_GLOBAL_DATA_PTR;
+
 	char *start = NULL;
 	char *end = NULL;
-	flash_info_t *info = &flash_info[0];
 
 	if(!boundary_value){
 		return(0);
@@ -118,8 +121,7 @@ static int httpd_findandstore_firstchunk(void){
 		// find upgrade type
 
 		end = (char *)strstr((char *)start, "name=\"firmware\"");
-
-		if(end){
+		if (end) {
 
 			printf("Upgrade type: firmware\n");
 			webfailsafe_upgrade_type = WEBFAILSAFE_UPGRADE_TYPE_FIRMWARE;
@@ -127,8 +129,7 @@ static int httpd_findandstore_firstchunk(void){
 		} else {
 
 			end = (char *)strstr((char *)start, "name=\"uboot\"");
-
-			if(end){
+			if (end) {
 #if defined(WEBFAILSAFE_DISABLE_UBOOT_UPGRADE)
 				printf("*** ERROR: U-Boot upgrade is not allowed on this board!\n");
 				webfailsafe_upload_failed = 1;
@@ -138,25 +139,54 @@ static int httpd_findandstore_firstchunk(void){
 #endif /* if defined(WEBFAILSAFE_DISABLE_UBOOT_UPGRADE) */
 			} else {
 
-				end = (char *)strstr((char *)start, "name=\"factory\"");
-
-				if(end){
-#if defined(WEBFAILSAFE_DISABLE_FACTORY_UPGRADE)
-					printf("*** ERROR: Factory upgrade is not allowed on this board!\n");
+				end = (char *)strstr((char *)start, "name=\"radio\"");
+				if (end) {
+#if defined(WEBFAILSAFE_DISABLE_RADIO_UPGRADE)
+					printf("*** ERROR: Radio upgrade is not allowed on this board!\n");
 					webfailsafe_upload_failed = 1;
 #else
-					printf("Upgrade type: FACTORY\n");
-					webfailsafe_upgrade_type = WEBFAILSAFE_UPGRADE_TYPE_FACTORY;
+					printf("Upgrade type: RADIO\n");
+					webfailsafe_upgrade_type = WEBFAILSAFE_UPGRADE_TYPE_RADIO;
 #endif
 				} else {
-
-					printf("*** ERROR: input name not found!\n");
-					return(0);
-
+					end = (char *)strstr( (char *)start, "name=\"config\"" );
+					if ( end ) {
+#if defined(WEBFAILSAFE_DISABLE_CONFIG_UPGRADE)
+						printf( "*** ERROR: Config upgrade is not allowed on this board!\n" );
+						webfailsafe_upload_failed = 1;
+#else
+						printf( "Upgrade type: CONFIG\n" );
+						webfailsafe_upgrade_type = WEBFAILSAFE_UPGRADE_TYPE_CONFIG;
+#endif
+					} else {
+						end = (char *)strstr( (char *)start, "name=\"tplink\"" );
+						if ( end ) {
+#if defined(WEBFAILSAFE_DISABLE_TPLINK_UPGRADE)
+							printf( "*** ERROR: Tplink upgrade is not allowed on this board!\n" );
+							webfailsafe_upload_failed = 1;
+#else
+							printf( "Upgrade type: TPLINK\n" );
+							webfailsafe_upgrade_type = WEBFAILSAFE_UPGRADE_TYPE_TPLINK;
+#endif
+						} else {
+							end = (char *)strstr( (char *)start, "name=\"initramfs\"" );
+							if ( end ) {
+#if defined(WEBFAILSAFE_DISABLE_INITRAMFS_UPGRADE)
+								printf( "*** ERROR: Initramfs upgrade is not allowed on this board!\n" );
+								webfailsafe_upload_failed = 1;
+#else
+								printf( "Upgrade type: INITRAMFS\n" );
+								webfailsafe_upgrade_type = WEBFAILSAFE_UPGRADE_TYPE_INITRAMFS;
+#endif
+							} else {
+								printf("*** ERROR: input name not found!\n");
+								return(0);
+							}
+						}
+					}
 				}
 
 			}
-
 		}
 
 		end = NULL;
@@ -166,7 +196,7 @@ static int httpd_findandstore_firstchunk(void){
 
 		if(end){
 
-			if((end - (char *)uip_appdata) < uip_len){
+			if ((end - (char *)uip_appdata) < uip_len) {
 
 				// move pointer over CR LF CR LF
 				end += 4;
@@ -181,32 +211,81 @@ static int httpd_findandstore_firstchunk(void){
 				// has correct size (for every type of upgrade)
 
 				// U-Boot
-				if((webfailsafe_upgrade_type == WEBFAILSAFE_UPGRADE_TYPE_UBOOT) && (hs->upload_total > WEBFAILSAFE_UPLOAD_UBOOT_SIZE_IN_BYTES)){
-
-					printf("*** ERROR: file too big!\n");
-					webfailsafe_upload_failed = 1;
-
-				// ART
-				} else if((webfailsafe_upgrade_type == WEBFAILSAFE_UPGRADE_TYPE_FACTORY) && (hs->upload_total != WEBFAILSAFE_UPLOAD_FACTORY_SIZE_IN_BYTES)){
-
-					printf("*** ERROR: wrong file size, should be: %d bytes!\n", WEBFAILSAFE_UPLOAD_FACTORY_SIZE_IN_BYTES);
-					webfailsafe_upload_failed = 1;
-
-				// firmware can't exceed: (FLASH_SIZE -  WEBFAILSAFE_UPLOAD_LIMITED_AREA_IN_BYTES)
-				/*} else if(hs->upload_total > (info->size - WEBFAILSAFE_UPLOAD_LIMITED_AREA_IN_BYTES)){
-
-					printf("*** ERROR: file too big!\n");
-					webfailsafe_upload_failed = 1;*/
-
+				if (webfailsafe_upgrade_type == WEBFAILSAFE_UPGRADE_TYPE_UBOOT) {
+					if (hs->upload_total > UBOOT_FILE_SIZE_MAX) {
+						printf("*** ERROR: u-boot file is too big, should be <= %d bytes.\n", UBOOT_FILE_SIZE_MAX);
+						webfailsafe_upload_failed = 1;
+					}
+					else if (hs->upload_total < UBOOT_FILE_SIZE_MIN) {
+						printf("*** ERROR: u-boot file is too small, should be >= %d bytes.\n", UBOOT_FILE_SIZE_MIN);
+						webfailsafe_upload_failed = 1;
+					}
+				// Radio
+				} else if (webfailsafe_upgrade_type == WEBFAILSAFE_UPGRADE_TYPE_RADIO) {
+					if (hs->upload_total != CFG_RADIO_SIZE) {
+						printf("*** ERROR: wrong RADIO file size, should be %d bytes.\n", CFG_RADIO_SIZE);
+						webfailsafe_upload_failed = 1;
+					}
+				} else if ( webfailsafe_upgrade_type == WEBFAILSAFE_UPGRADE_TYPE_CONFIG ) {
+					if ( hs->upload_total != CFG_CONFIG_SIZE ) {
+						printf( "*** ERROR: wrong Config file size, should be %d bytes.\n", CFG_CONFIG_SIZE );
+						webfailsafe_upload_failed = 1;
+					}
+				} else if ( webfailsafe_upgrade_type == WEBFAILSAFE_UPGRADE_TYPE_TPLINK ) {
+					if ( hs->upload_total != CFG_TPLINK_SIZE ) {
+						printf( "*** ERROR: wrong TPLink file size, should be %d bytes.\n", CFG_TPLINK_SIZE );
+						webfailsafe_upload_failed = 1;
+					}
+				} else if (webfailsafe_upgrade_type == WEBFAILSAFE_UPGRADE_TYPE_FIRMWARE || webfailsafe_upgrade_type == WEBFAILSAFE_UPGRADE_TYPE_INITRAMFS) {
+					const char *fw_type = webfailsafe_upgrade_type == WEBFAILSAFE_UPGRADE_TYPE_FIRMWARE ? "firmware" : "initramfs";
+					if ( hs->upload_total > (gd->bd->bi_flashsize - WEBFAILSAFE_UPLOAD_LIMITED_AREA_IN_BYTES) ) {
+						printf("*** ERROR: %s file is too big - %d, should be <= %d bytes.\n", fw_type, hs->upload_total, (gd->bd->bi_flashsize - WEBFAILSAFE_UPLOAD_LIMITED_AREA_IN_BYTES));
+						webfailsafe_upload_failed = 1;
+					}
+					else if (hs->upload_total < LINUX_FILE_SIZE_MIN) {
+						printf( "*** ERROR: %s file is too small - %d, should be >= %d bytes.\n", fw_type, hs->upload_total, LINUX_FILE_SIZE_MIN);
+						webfailsafe_upload_failed = 1;
+					}
+				} else if (webfailsafe_upgrade_type == WEBFAILSAFE_UPGRADE_TYPE_ROOTFS_RESET) {
+					if (rootfs_func(1) < 0) {
+						printf("*** ERROR: rootfs reset is not supported by current firmware running on the device\n");
+						webfailsafe_upload_failed = 1;
+					}
 				}
 
 				printf("Loading: ");
 
 				// how much data we are storing now?
 				hs->upload = (unsigned int)(uip_len - (end - (char *)uip_appdata));
+				webfailsafe_data_pointer = (void*)WEBFAILSAFE_UPLOAD_RAM_ADDRESS;
 
-				memcpy((void *)webfailsafe_data_pointer, (void *)end, hs->upload);
-				webfailsafe_data_pointer += hs->upload;
+				switch ( webfailsafe_upgrade_type ) {
+					case WEBFAILSAFE_UPGRADE_TYPE_UBOOT:
+						memset( (void *)webfailsafe_data_pointer, 0xFF, CFG_BOOTLOADER_SIZE );
+						break;
+					case WEBFAILSAFE_UPGRADE_TYPE_INITRAMFS:
+					case WEBFAILSAFE_UPGRADE_TYPE_FIRMWARE:
+					case WEBFAILSAFE_UPGRADE_TYPE_RADIO:
+					case WEBFAILSAFE_UPGRADE_TYPE_CONFIG:
+					case WEBFAILSAFE_UPGRADE_TYPE_TPLINK:
+					default:
+						break;
+					case WEBFAILSAFE_UPGRADE_TYPE_ROOTFS_RESET:
+						webfailsafe_data_pointer = (void*)WEBFAILSAFE_UPLOAD_RAM_ADDRESS;
+						break;
+				}
+
+				if ( webfailsafe_upload_failed ) {
+					webfailsafe_data_pointer_base = NULL;
+				} else {
+					webfailsafe_data_pointer_base = webfailsafe_data_pointer;
+				}
+
+				if (webfailsafe_data_pointer) {
+					printf("Data will be downloaded at 0x%X in RAM\n", (unsigned long)webfailsafe_data_pointer);
+					memcpy((void *)webfailsafe_data_pointer, (void *)end, hs->upload);
+					webfailsafe_data_pointer += hs->upload;
+				}
 
 				httpd_download_progress();
 
@@ -221,6 +300,130 @@ static int httpd_findandstore_firstchunk(void){
 	}
 
 	return(0);
+}
+
+#define MIN_RESERVED_VECTORS 2
+
+int verify_uboot_image( const u32 *data, unsigned int length ) {
+	int i;
+
+	if (length > UBOOT_FILE_SIZE_MAX) {
+		printf("%s(): image size %d is too big!\n", __func__, length);
+		return -1;
+	}
+
+	if (length < UBOOT_FILE_SIZE_MIN) {
+		printf("%s(): image size %d is too small!\n", __func__, length);
+		return -1;
+	}
+
+	/* check that we have valid interrupt vector table */
+	for (i = 0; i < MIN_RESERVED_VECTORS; i++) {
+		u16 opcode;
+		s16 offset;
+		if (data[i] == 0x00000000) {
+			continue; /* nop */
+		}
+		opcode = (u16)((data[i] >> 16) & 0xFFFF);
+		offset = (s16)((data[i] >> 0) & 0xFFFF);
+		if ( opcode == 0x1000 || opcode == 0x241A ) {
+			/* branch/li instructions */
+			if (offset > MIN_RESERVED_VECTORS - i) {
+				continue;
+			}
+			debug("%s() [%03d] : branch to bad offset %i\n", __func__, i * 4, (offset - ((MIN_RESERVED_VECTORS-1) - i)) * 4);
+			return -1; /* bad offset */
+		}
+		debug("%s() [%03d] : bad instruction -  0x%08x\n", __func__, i, data[i]);
+		return -1;
+	}
+
+	return 0;
+}
+
+static int validate_uploaded_data( unsigned char *data, unsigned int length ) {
+	if ( webfailsafe_upload_failed ) {
+		return -1;
+	}
+	if (webfailsafe_upgrade_type == WEBFAILSAFE_UPGRADE_TYPE_ROOTFS_RESET) {
+		return 0;
+	}
+	if (data == NULL) {
+		return -1;
+	}
+	if ( webfailsafe_upgrade_type == WEBFAILSAFE_UPGRADE_TYPE_UBOOT ) {
+		return verify_uboot_image( (const u32 *)data, length );
+	}
+	if ( webfailsafe_upgrade_type == WEBFAILSAFE_UPGRADE_TYPE_INITRAMFS || webfailsafe_upgrade_type == WEBFAILSAFE_UPGRADE_TYPE_FIRMWARE) {
+		int len = verify_kernel_image((ulong)data, NULL, NULL, NULL, 1);
+		if (len > 0) {
+			unsigned int data_size = length - len;
+			if (webfailsafe_upgrade_type == WEBFAILSAFE_UPGRADE_TYPE_INITRAMFS) {
+				/* check initramfs */
+				if (data_size == sizeof(image_header_t)) {
+					return 0;
+				}
+			}
+			else {
+				/* check firmware */
+				if (data_size > sizeof(image_header_t)) {
+					return 0;
+				}
+			}
+		}
+		return -1;
+	}
+#if 0
+	if ( webfailsafe_upgrade_type == WEBFAILSAFE_UPGRADE_TYPE_CONFIG ) {
+		/* TODO: validate for valid MAC & WPS PIN */
+	}
+	if (webfailsafe_upgrade_type == WEBFAILSAFE_UPGRADE_TYPE_TPLINK) {
+		/* TODO: validate for valid partition table */
+	}
+#endif
+	return 0;
+}
+
+static int httpd_inline_commands( const char *start )
+{
+	if ( strstr((char*)uip_appdata + 4, "application/x-www-form-urlencoded" ) ) {
+		start = (const char *)strstr( start, "rootfs_reset=" );
+		if ( start ) {
+			if (rootfs_func(1 /* check */) >= 0) {
+				webfailsafe_upgrade_type = WEBFAILSAFE_UPGRADE_TYPE_ROOTFS_RESET;
+				webfailsafe_upload_failed = 0;
+			} else {
+				webfailsafe_upgrade_type = -1;
+				webfailsafe_upload_failed = 1;
+			}
+			return 0;
+		}
+	}
+	return -1;
+}
+
+static void httpd_post_done( struct httpd_state * hs, ulong upload_total, int failed )
+{
+	struct fs_file fsfile;
+
+	// end of post upload
+	webfailsafe_post_done = 1;
+	NetBootFileXferSize = upload_total;
+
+	// which website will be returned
+	if ( failed ) {
+		fs_open( file_fail_html.name, &fsfile );
+	} else {
+		fs_open( file_flashing_html.name, &fsfile );
+	}
+
+	httpd_state_reset();
+
+	hs->state = STATE_FILE_REQUEST;
+	hs->dataptr = (u8_t *)fsfile.data;
+	hs->upload = fsfile.len;
+
+	uip_send( hs->dataptr, (hs->upload > uip_mss() ? uip_mss() : hs->upload) );
 }
 
 // called for http server app
@@ -327,7 +530,7 @@ void httpd_appcall(void){
 					char *start = NULL;
 					char *end = NULL;
 
-					// end bufor data with NULL
+					// end buffer data with NULL
 					uip_appdata[uip_len] = '\0';
 
 					/*
@@ -374,6 +577,12 @@ void httpd_appcall(void){
 						return;
 					}
 
+					// check for inline commands
+					if ( hs->upload_total < 256 && httpd_inline_commands( end ) >= 0 ) {
+						httpd_post_done( hs, 0, webfailsafe_upload_failed );
+						return;
+					}
+
 					// we don't support very small files (< 10 KB)
 					if(hs->upload_total < 10240){
 						printf("*** ERROR: request for upload < 10 KB data!\n");
@@ -408,7 +617,7 @@ void httpd_appcall(void){
 								// add -- at the begin and 0 at the end
 								boundary_value[0] = '-';
 								boundary_value[1] = '-';
-								boundary_value[end - start + 2] = 0;
+								boundary_value[end - start + 2] = '\0';
 
 #ifdef DEBUG_UIP
 								printf("Found boundary value: \"%s\"\n", boundary_value);
@@ -442,19 +651,8 @@ void httpd_appcall(void){
 					 * We can now try to 'allocate memory' and
 					 * find beginning of the data in first packet
 					 */
-
-					webfailsafe_data_pointer = (u8_t *) WEBFAILSAFE_UPLOAD_RAM_ADDRESS;
-
-					if(!webfailsafe_data_pointer){
-						printf("*** ERROR: couldn't allocate RAM for data!\n");
-						httpd_state_reset();
-						uip_abort();
-						return;
-					} else {
-						printf("Data will be downloaded at 0x%X in RAM\n", WEBFAILSAFE_UPLOAD_RAM_ADDRESS);
-					}
-
-					memset((void *)webfailsafe_data_pointer, 0xFF, WEBFAILSAFE_UPLOAD_UBOOT_SIZE_IN_BYTES);
+					webfailsafe_data_pointer = NULL;
+					webfailsafe_data_pointer_base = NULL;
 
 					if(httpd_findandstore_firstchunk()){
 						data_start_found = 1;
@@ -525,7 +723,7 @@ void httpd_appcall(void){
 				// if we are in STATE_UPLOAD_REQUEST state
 				if(hs->state == STATE_UPLOAD_REQUEST){
 
-					// end bufor data with NULL
+					// end buffer data with NULL
 					uip_appdata[uip_len] = '\0';
 
 					// do we have to find start of data?
@@ -554,36 +752,16 @@ void httpd_appcall(void){
 
 					// if we have collected all data
 					if(hs->upload >= hs->upload_total){
-
 						printf("\n\n");
-
-						// end of post upload
-						webfailsafe_post_done = 1;
-						NetBootFileXferSize = (ulong)hs->upload_total;
-
-						// which website will be returned
-						if(!webfailsafe_upload_failed){
-							fs_open(file_flashing_html.name, &fsfile);
-						} else {
-							fs_open(file_fail_html.name, &fsfile);
+						if ( validate_uploaded_data( webfailsafe_data_pointer_base, (ulong)hs->upload_total ) != 0 ) {
+							webfailsafe_upload_failed = 1;
 						}
-
-						httpd_state_reset();
-
-						hs->state = STATE_FILE_REQUEST;
-						hs->dataptr = (u8_t *)fsfile.data;
-						hs->upload = fsfile.len;
-
-						uip_send(hs->dataptr, (hs->upload > uip_mss() ? uip_mss() : hs->upload));
+						httpd_post_done( hs, (ulong)hs->upload_total, webfailsafe_upload_failed );
 					}
-
-				}
-
+				} // if ( hs->state == STATE_UPLOAD_REQUEST )
 				return;
-			}
-
+			} // if ( uip_newdata() )
 			break;
-
 		default:
 			// we shouldn't get here... we are listening only on port 80
 			uip_abort();

@@ -76,3 +76,42 @@ ul {
 	margin: 0 0 5px;
 	display: block;
 }
+
+.cl {
+	background-color: #48C;
+	color: #fff;
+	cursor: pointer;
+	border: 1px;
+	width: 100%;
+	max-width: 710px;
+	outline: none;
+	text-align: center;
+	border-radius: 7px;
+	margin-left: 18px;
+	margin-right: 18px;
+	margin-top: 18px;
+	margin-bottom: 0px;
+}
+
+.bt {
+	background-color: #A8C;
+}
+
+.rr {
+	background-color: #AAA;
+}
+
+.ir {
+	background-color: #8CC;
+}
+
+.active, .cl:hover {
+	background-color: #555;
+}
+
+.ct {
+	padding: 0 18px;
+	display: none;
+	overflow: hidden;
+	margin-top: 18px;
+}

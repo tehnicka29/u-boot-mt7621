@@ -37,7 +37,7 @@ static int output_recursion = 0;
 static int net_timeout;
 static uchar nc_ether[6];			/* server enet address */
 static IPaddr_t nc_ip;				/* server ip */
-static short nc_port;				/* source/target port */
+static unsigned short nc_port;		/* source/target port */
 static const char *output_packet;	/* used by first send udp */
 static int output_packet_len = 0;
 
@@ -164,11 +164,11 @@ static void nc_send_packet(const char *buf, int len){
 }
 
 int nc_start(void){
-	int netmask, our_ip;
+	unsigned int netmask, our_ip;
 	char *p;
 
 	p = getenv("ncport");
-	nc_port = p ? (short)simple_strtol(p, NULL, 10) : 6666; /* default NetConsole port */
+	nc_port = p ? (unsigned short)simple_strtoul(p, NULL, 10) : 6666; /* default NetConsole port */
 
 	if(getenv("serverip")){
 
@@ -179,15 +179,15 @@ int nc_start(void){
 		}
 
 	} else {
-		nc_ip = ~0; /* ncip is not set */
+		nc_ip = ~0U; /* ncip is not set */
 	}
 
 	our_ip = getenv_IPaddr("ipaddr");
 	netmask = getenv_IPaddr("netmask");
 
-	if(nc_ip == ~0 || /* 255.255.255.255 */
+	if(nc_ip == ~0U || /* 255.255.255.255 */
 	   ((netmask & our_ip) == (netmask & nc_ip) && /* on the same net */
-	   (netmask | nc_ip) == ~0)) /* broadcast to our net */{
+	   (netmask | nc_ip) == ~0U)) /* broadcast to our net */{
 		memset(nc_ether, 0xff, sizeof nc_ether);
 	} else {
 		memset(nc_ether, 0, sizeof nc_ether); /* force arp request */

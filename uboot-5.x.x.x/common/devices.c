@@ -26,12 +26,8 @@
 #include <stdarg.h>
 #include <malloc.h>
 #include <devices.h>
-#include <serial.h>
 #ifdef CONFIG_LOGBUFFER
 #include <logbuff.h>
-#endif
-#if defined(CONFIG_HARD_I2C) || defined(CONFIG_SOFT_I2C)
-#include <i2c.h>
 #endif
 
 list_t devlist = 0;
@@ -74,17 +70,10 @@ static void drv_system_init (void)
 
 	strcpy (dev.name, "serial");
 	dev.flags = DEV_FLAGS_OUTPUT | DEV_FLAGS_INPUT | DEV_FLAGS_SYSTEM;
-#ifdef CONFIG_SERIAL_SOFTWARE_FIFO
-	dev.putc = serial_buffered_putc;
-	dev.puts = serial_buffered_puts;
-	dev.getc = serial_buffered_getc;
-	dev.tstc = serial_buffered_tstc;
-#else
 	dev.putc = serial_putc;
 	dev.puts = serial_puts;
 	dev.getc = serial_getc;
 	dev.tstc = serial_tstc;
-#endif
 
 	device_register (&dev);
 
@@ -162,11 +151,11 @@ int devices_init (void)
 #ifndef CONFIG_ARM     /* already relocated for current ARM implementation */
 	DECLARE_GLOBAL_DATA_PTR;
 
-	ulong relocation_offset = gd->reloc_off;
-	int i;
+	const ulong relocation_offset = gd->reloc_off;
+	unsigned int i;
 
 	/* relocate device name pointers */
-	for (i = 0; i < (sizeof (stdio_names) / sizeof (char *)); ++i) {
+	for (i = 0; i < ARRAY_SIZE(stdio_names); ++i) {
 		stdio_names[i] = (char *) (((ulong) stdio_names[i]) +
 						relocation_offset);
 	}
@@ -179,25 +168,10 @@ int devices_init (void)
 		eputs ("Cannot initialize the list of devices!\n");
 		return -1;
 	}
-#if defined(CONFIG_HARD_I2C) || defined(CONFIG_SOFT_I2C)
-	i2c_init (CFG_I2C_SPEED, CFG_I2C_SLAVE);
-#endif
-#ifdef CONFIG_LCD
-	drv_lcd_init ();
-#endif
-#if defined(CONFIG_VIDEO) || defined(CONFIG_CFB_CONSOLE)
-	drv_video_init ();
-#endif
-#ifdef CONFIG_KEYBOARD
-	drv_keyboard_init ();
-#endif
 #ifdef CONFIG_LOGBUFFER
 	drv_logbuff_init ();
 #endif
 	drv_system_init ();
-#ifdef CONFIG_SERIAL_MULTI
-	serial_devices_init ();
-#endif
 #ifdef CONFIG_USB_TTY
 	drv_usbtty_init ();
 #endif

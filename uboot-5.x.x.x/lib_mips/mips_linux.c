@@ -28,8 +28,8 @@
 #include <asm/byteorder.h>
 #include <asm/addrspace.h>
 
-#define	LINUX_MAX_ENVS		256
-#define	LINUX_MAX_ARGS		256
+#define	LINUX_MAX_ENVS		16 /* we don't use more than 8 for now */
+#define	LINUX_MAX_ARGS		32 /* should be enough as well */
 
 #ifdef CONFIG_SHOW_BOOT_PROGRESS
 # include <status_led.h>
@@ -52,18 +52,16 @@ static int	linux_env_idx;
 static void linux_params_init (ulong start, char * commandline);
 static void linux_env_set (char * env_name, char * env_val);
 
-
 void do_bootm_linux (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[],
 		     ulong addr, ulong * len_ptr, int verify)
 {
 	DECLARE_GLOBAL_DATA_PTR;
 
-	ulong len = 0, checksum;
+	ulong len = 0;
 	ulong initrd_start, initrd_end;
 	ulong data;
 	void (*theKernel) (int, char **, char **, int *);
 	image_header_t *hdr = &header;
-	char *commandline = getenv ("bootargs");
 	char env_buf[12];
 	int i;
 
@@ -73,7 +71,9 @@ void do_bootm_linux (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[],
 	/*
 	 * Check if there is an initrd image
 	 */
+#if 0
 	if (argc >= 3) {
+		ulong checksum;
 		SHOW_BOOT_PROGRESS (9);
 
 		addr = simple_strtoul (argv[2], NULL, 16);
@@ -153,7 +153,9 @@ void do_bootm_linux (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[],
 
 		len = ntohl (len_ptr[1]);
 
-	} else {
+	} else 
+#endif
+	{
 		/*
 		 * no initrd image
 		 */
@@ -162,28 +164,20 @@ void do_bootm_linux (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[],
 		data = 0;
 	}
 
-#ifdef	DEBUG
-	if (!data) {
-		printf ("No initrd\n");
-	}
-#endif
-
 	if (data) {
 		initrd_start = data;
 		initrd_end = initrd_start + len;
 	} else {
 		initrd_start = 0;
 		initrd_end = 0;
+		debug( "No initrd\n" );
 	}
 
 	SHOW_BOOT_PROGRESS (15);
 
-#ifdef DEBUG
-	printf ("## Transferring control to Linux (at address %08lx) ...\n",
-		(ulong) theKernel);
-#endif
+	debug ("## Transferring control to Linux (at address %08lx) ...\n", (ulong) theKernel);
 
-	linux_params_init (UNCACHED_SDRAM (gd->bd->bi_boot_params), commandline);
+	linux_params_init(UNCACHED_SDRAM( gd->bd->bi_boot_params ), getenv("bootargs"));
 
 	len = gd->ram_size;
 #if defined (ON_BOARD_4096M_DRAM_COMPONENT)
@@ -197,9 +191,7 @@ void do_bootm_linux (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[],
 #endif
 #else
 	sprintf (env_buf, "%lu", len >> 20);
-#ifdef DEBUG
-	printf ("## Giving linux memsize in MB, %lu\n", len >> 20);
-#endif
+	debug ("## Giving linux memsize in MB, %lu\n", len >> 20);
 #endif /* CONFIG_MEMSIZE_IN_BYTES */
 
 	linux_env_set ("memsize", env_buf);

@@ -51,7 +51,6 @@
 
 #include <common.h>
 #include <command.h>
-#include <asm/processor.h>
 #include <asm/addrspace.h>
 #include <asm/byteorder.h>
 
@@ -933,12 +932,7 @@ static int usb_read_10(ccb *srb,struct us_data *ss, unsigned long start, unsigne
 	return ss->transport(srb,ss);
 }
 
-
-#if defined (RALINK_OHCI)
-#define USB_MAX_READ_BLK 1
-#else
 #define USB_MAX_READ_BLK 10
-#endif
 
 unsigned long usb_stor_read(int device, unsigned long blknr, unsigned long blkcnt, unsigned long *tmp_buf)
 {

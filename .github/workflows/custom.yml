@@ -1,0 +1,83 @@
+name: Build Custom U-Boot
+
+on:
+  workflow_dispatch:
+   inputs:
+     debug_build:
+        description: 'Debug Build'
+        required: true
+        type: boolean
+        default: 'false'
+
+     use_mips16:
+        description: 'Use MIPS16 ASE'
+        required: true
+        type: boolean
+        default: 'false'
+
+     boot_delay:
+        description: 'Boot Delay'
+        required: true
+        type: number
+        default: '3'
+
+     lan_wan_map:
+        description: 'LAN/WAN Port Mapping At Boot/Recovery'
+        required: true
+        type: choice
+        options:
+        - 'None'
+        - 'LLLLW'
+        - 'LLLLX'
+        - 'LLLWW'
+        - 'LLLXX'
+
+     ephy_up:
+        description: 'Enable All Ethernet PHY'
+        required: true
+        type: boolean
+        default: 'false'
+
+jobs:
+  build:
+    name: Build u-boot for MT7621
+    runs-on: ubuntu-latest
+    strategy:
+       fail-fast: false
+
+    steps:
+      - name: Checkout Sources
+        uses: actions/checkout@v4
+        with:
+          path: u-boot-mt7621
+
+      - name: Setup Toolchain
+        run: |
+          mkdir -p ~/toolchain
+          tar -xf u-boot-mt7621/toolchain/mips-2021.02.tar.xz -C ~/toolchain
+
+      - name: Base Configuration
+        working-directory: u-boot-mt7621/uboot-5.x.x.x
+        run: make archer_ax23_config
+ 
+      - name: "Apply Configuration"
+        working-directory: u-boot-mt7621/uboot-5.x.x.x
+        run: bash configure.sh '${{ inputs.debug_build }}' '${{ inputs.use_mips16 }}' '${{ inputs.boot_delay }}' '${{ inputs.lan_wan_map }}' '${{ inputs.ephy_up }}'
+
+      - name: Compile
+        working-directory: u-boot-mt7621/uboot-5.x.x.x
+        run: |
+          make oldconfig
+          make -j4
+
+      - name: Upload Binaries
+        uses: actions/upload-artifact@v4
+        with:
+          overwrite: true
+          name: u-boot
+          path: |
+            u-boot-mt7621/uboot-5.x.x.x/uboot.bin
+            u-boot-mt7621/uboot-5.x.x.x/System.map
+            u-boot-mt7621/uboot-5.x.x.x/.config
+            u-boot-mt7621/uboot-5.x.x.x/.config.old
+

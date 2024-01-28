@@ -19,4 +19,11 @@ extern void LED_ALERT_ON(void);
 extern void LED_ALERT_OFF(void);
 extern void LED_ALERT_BLINK(void);
 
+extern void LED_WAN_ON(void );
+extern void LED_WAN_OFF(void);
+
+extern void LED_WPS_ON(void);
+extern void LED_WPS_OFF(void);
+extern void LED_WPS_BLINK(void);
+
 #endif

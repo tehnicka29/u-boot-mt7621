@@ -28,7 +28,6 @@
  */
 #include <common.h>
 #include <command.h>
-#include <asm/processor.h>
 #include <linux/ctype.h>
 #include <asm/addrspace.h>
 #include <asm/byteorder.h>

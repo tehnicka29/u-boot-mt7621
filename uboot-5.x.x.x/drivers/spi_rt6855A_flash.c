@@ -103,25 +103,17 @@ extern unsigned long mips_bus_feq;
 
 void spic_init(void)
 {
-#if defined (MT7621_ASIC_BOARD) || defined (MT7628_ASIC_BOARD)
 	u32 clk_sys, clk_div, reg;
 
 	clk_sys = mips_bus_feq / 1000000;
-#if defined (MT7621_ASIC_BOARD)
+
 	// hclk = 220 MHz
 #ifdef SPI_FAST_CLOCK
 	clk_div = 5;	/* hclk/5 -> 44.0 MHz */
 #else
 	clk_div = 7;	/* hclk/7 -> 31.4 MHz */
 #endif
-#else
-	// hclk = 193/191 MHz
-#ifdef SPI_FAST_CLOCK
-	clk_div = 4;	/* hclk/4 -> 48.3 MHz */
-#else
-	clk_div = 6;	/* hclk/6 -> 32.2 MHz */
-#endif
-#endif
+
 	reg = ra_inl(SPI_REG_MASTER);
 	reg &=  ~(0x7);
 	reg &=  ~(0xfff << 16);
@@ -129,76 +121,120 @@ void spic_init(void)
 	ra_outl(SPI_REG_MASTER, reg);
 
 	printf("%s SPI flash driver, SPI clock: %dMHz\n", RLT_MTK_VENDOR_NAME, clk_sys / clk_div);
+}
 
-#elif defined (RT6855_ASIC_BOARD) || defined (RT6855_FPGA_BOARD)
-	// enable SMC bank 0 alias addressing
-	ra_or(RALINK_SYSCTL_BASE + 0x38, 0x80000000);
-#endif
+#define MF_ID_SPANSION   0x01
+#define MF_ID_EON        0x1C
+#define MF_ID_ATMEL      0x1F
+#define MF_ID_ST         0x20
+#define MF_ID_ESMT       0x8C
+#define MF_ID_MACRONIX   0xC2
+#define MF_ID_GIGADEVICE 0xC8
+#define MF_ID_WINBOND    0xEF
+
+struct mfg_info {
+	const char *name;
+	const u8 id;
+};
+
+static const struct mfg_info mfs_data[] = {
+	{ "Spansion",   MF_ID_SPANSION   },
+	{ "EON",        MF_ID_EON        },
+	{ "Atmel",      MF_ID_ATMEL      },
+	{ "ST",         MF_ID_ST         },
+	{ "ESMT",       MF_ID_ESMT       },
+	{ "Macronix",   MF_ID_MACRONIX   },
+	{ "GigaDevice", MF_ID_GIGADEVICE },
+	{ "Winbond",    MF_ID_WINBOND    },
+};
+
+static const char *mf_name(const u8 id) {
+	int i;
+	for (i = 0; i < ARRAY_SIZE(mfs_data); i++) {
+		if (mfs_data[i].id == id) {
+			return mfs_data[i].name;
+		}
+	}
+	return "Unknown";
 }
 
 struct chip_info {
-	char		*name;
+	const char	*name;
 	u8		id;
 	u32		jedec_id;
-	unsigned long	sector_size;
-	unsigned int	n_sectors;
+	unsigned long sector_size;
+	unsigned int n_sectors;
 	char		addr4b;
 };
-struct chip_info *spi_chip_info = NULL;
 
-static struct chip_info chips_data [] = {
+const struct chip_info *spi_chip_info = NULL;
+
+static const struct chip_info chips_data [] = {
 	/* REVISIT: fill in JEDEC ids, for parts that have them */
-	{ "AT25DF321",		0x1f, 0x47000000, 64 * 1024, 64,  0 },
-	{ "AT26DF161",		0x1f, 0x46000000, 64 * 1024, 32,  0 },
-	{ "FL016AIF",		0x01, 0x02140000, 64 * 1024, 32,  0 },
-	{ "FL064AIF",		0x01, 0x02160000, 64 * 1024, 128, 0 },
-	{ "MX25L1605D",         0xc2, 0x2015c220, 64 * 1024, 32,  0 },//MX25L1606E
-	{ "MX25L3205D",         0xc2, 0x2016c220, 64 * 1024, 64,  0 },//MX25L3233F
-	{ "MX25L6406E",         0xc2, 0x2017c220, 64 * 1024, 128, 0 },//MX25L6433F
-	{ "MX25L12805D",        0xc2, 0x2018c220, 64 * 1024, 256, 0 },//MX25L12805D
-	{ "MX25L12835F",        0xc2, 0x2018c220, 64 * 1024, 256, 0 },//MX25L12835F
-	{ "MX25L25635F",        0xc2, 0x2019c220, 64 * 1024, 512, 1 },//MX25L25635F
-	{ "MX25L51245G",        0xc2, 0x201ac220, 64 * 1024, 1024, 1 },
-	{ "S25FL256S",		0x01, 0x02194D01, 64 * 1024, 512, 1 },
-	{ "S25FL128P",		0x01, 0x20180301, 64 * 1024, 256, 0 },
-	{ "S25FL129P",          0x01, 0x20184D01, 64 * 1024, 256, 0 },
-	{ "S25FL164K",		0x01, 0x40170140, 64 * 1024, 128, 0 },
-	{ "S25FL132K",		0x01, 0x40160140, 64 * 1024, 64, 0 },
-	{ "S25FL032P",		0x01, 0x02154D00, 64 * 1024, 64,  0 },
-	{ "S25FL064P",		0x01, 0x02164D00, 64 * 1024, 128, 0 },
-	{ "S25FL116K",          0x01, 0x40150140, 64 * 1024, 32,  0 },
-	{ "F25L64QA",           0x8c, 0x41170000, 64 * 1024, 128, 0 }, //ESMT
-	{ "F25L32QA",           0x8c, 0x41168c41, 64 * 1024, 64,  0 }, //ESMT
-	{ "EN25F16",		0x1c, 0x31151c31, 64 * 1024, 32,  0 },
-	{ "EN25Q32B",           0x1c, 0x30161c30, 64 * 1024, 64,  0 },
-	{ "EN25F32",		0x1c, 0x31161c31, 64 * 1024, 64,  0 },
-	{ "EN25F64",		0x1c, 0x20171c20, 64 * 1024, 128,  0 }, //EN25P64
-	{ "EN25Q64",		0x1c, 0x30171c30, 64 * 1024, 128,  0 },
-	{ "EN25Q128",		0x1c, 0x30180000, 64 * 1024,  256, 0 }, //EN25Q128
-	{ "EN25QX128A",		0x1c, 0x71180000, 64 * 1024,  256, 0 }, //EN25QX128A
-	{ "EN25QH16",   	0x1c, 0x70150000, 64 * 1024,  32,  0 }, //EN25QH16
-	{ "W25Q32BV",           0xef, 0x40160000, 64 * 1024, 64,  0 },//W25Q32FV
-	{ "W25X32VS",           0xef, 0x30160000, 64 * 1024, 64,  0 },
-	{ "W25Q64BV",           0xef, 0x40170000, 64 * 1024, 128, 0 }, //S25FL064K //W25Q64FV
-	{ "W25Q128BV",          0xef, 0x40180000, 64 * 1024, 256, 0 }, //W25Q128BV/FV
-	{ "W25Q256FV",          0xef, 0x40190000, 64 * 1024, 512, 1 },
-	{ "N25Q032A13ESE40F",   0x20, 0xba161000, 64 * 1024, 64,  0 },
-	{ "N25Q064A13ESE40F",   0x20, 0xba171000, 64 * 1024, 128, 0 },
-	{ "N25Q128A13ESE40F",   0x20, 0xba181000, 64 * 1024, 256, 0 },
-	{ "N25Q256A",       	0x20, 0xba191000, 64 * 1024, 512, 1 },
-	{ "MT25QL512AB",    	0x20, 0xba201044, 64 * 1024, 1024, 1 },
-	{ "GD25Q32B",		0xc8, 0x40160000, 64 * 1024, 64,  0 },
-	{ "GD25Q64B",		0xc8, 0x40170000, 64 * 1024, 128, 0 },
-	{ "GD25Q64CSIG",	0xc8, 0x4017c840, 64 * 1024, 128, 0 },
-	{ "GD25Q128C",		0xc8, 0x40180000, 64 * 1024, 256, 0 },
-	{ "GD25Q128CSIG",	0xc8, 0x4018c840, 64 * 1024, 256, 0 },
+	{ "AT25DF321",        MF_ID_ATMEL,      0x47000000, 64 * 1024, 64,  0 },
+	{ "AT26DF161",        MF_ID_ATMEL,      0x46000000, 64 * 1024, 32,  0 },
+	{ "FL016AIF",         MF_ID_SPANSION,   0x02140000, 64 * 1024, 32,  0 },
+	{ "FL064AIF",	      MF_ID_SPANSION,   0x02160000, 64 * 1024, 128, 0 },
+	{ "MX25L1605D",       MF_ID_MACRONIX,   0x2015c220, 64 * 1024, 32,  0 }, //MX25L1606E
+	{ "MX25L3205D",       MF_ID_MACRONIX,   0x2016c220, 64 * 1024, 64,  0 }, //MX25L3233F
+	{ "MX25L6406E",       MF_ID_MACRONIX,   0x2017c220, 64 * 1024, 128, 0 }, //MX25L6433F
+	{ "MX25L12805D",      MF_ID_MACRONIX,   0x2018c220, 64 * 1024, 256, 0 }, //MX25L12805D
+	{ "MX25L12835F",      MF_ID_MACRONIX,   0x2018c220, 64 * 1024, 256, 0 }, //MX25L12835F
+	{ "MX25L25635F",      MF_ID_MACRONIX,   0x2019c220, 64 * 1024, 512, 1 }, //MX25L25635F
+	{ "MX25L51245G",      MF_ID_MACRONIX,   0x201ac220, 64 * 1024, 1024,1 },
+	{ "S25FL256S",        MF_ID_SPANSION,   0x02194D01, 64 * 1024, 512, 1 },
+	{ "S25FL128P",        MF_ID_SPANSION,   0x20180301, 64 * 1024, 256, 0 },
+	{ "S25FL129P",        MF_ID_SPANSION,   0x20184D01, 64 * 1024, 256, 0 },
+	{ "S25FL164K",        MF_ID_SPANSION,   0x40170140, 64 * 1024, 128, 0 },
+	{ "S25FL132K",        MF_ID_SPANSION,   0x40160140, 64 * 1024, 64,  0 },
+	{ "S25FL032P",        MF_ID_SPANSION,   0x02154D00, 64 * 1024, 64,  0 },
+	{ "S25FL064P",	      MF_ID_SPANSION,   0x02164D00, 64 * 1024, 128, 0 },
+	{ "S25FL116K",        MF_ID_SPANSION,   0x40150140, 64 * 1024, 32,  0 },
+	{ "F25L64QA",         MF_ID_ESMT,       0x41170000, 64 * 1024, 128, 0 }, //ESMT
+	{ "F25L32QA",         MF_ID_ESMT,       0x41168c41, 64 * 1024, 64,  0 }, //ESMT
+	{ "EN25F16",          MF_ID_EON,        0x31151c31, 64 * 1024, 32,  0 },
+	{ "EN25Q32B",         MF_ID_EON,        0x30161c30, 64 * 1024, 64,  0 },
+	{ "EN25F32",          MF_ID_EON,        0x31161c31, 64 * 1024, 64,  0 },
+	{ "EN25F64",          MF_ID_EON,        0x20171c20, 64 * 1024, 128, 0 }, //EN25P64
+	{ "EN25Q64",          MF_ID_EON,        0x30171c30, 64 * 1024, 128, 0 },
+	{ "EN25Q128",         MF_ID_EON,        0x30180000, 64 * 1024, 256, 0 }, //EN25Q128
+	{ "EN25QX128A",       MF_ID_EON,        0x71180000, 64 * 1024, 256, 0 }, //EN25QX128A
+	{ "EN25QH128A",       MF_ID_EON,        0x70180000, 64 * 1024, 256, 0 }, //EN25QH128A
+	{ "EN25QH16",         MF_ID_EON,        0x70150000, 64 * 1024, 32,  0 }, //EN25QH16
+	{ "W25Q32BV",         MF_ID_WINBOND,    0x40160000, 64 * 1024, 64,  0 }, //W25Q32FV
+	{ "W25X32VS",         MF_ID_WINBOND,    0x30160000, 64 * 1024, 64,  0 },
+	{ "W25Q64BV",         MF_ID_WINBOND,    0x40170000, 64 * 1024, 128, 0 }, //S25FL064K //W25Q64FV
+	{ "W25Q128FV",        MF_ID_WINBOND,    0x40180000, 64 * 1024, 256, 0 }, //W25Q128BV/FV
+	{ "W25Q256FV",        MF_ID_WINBOND,    0x40190000, 64 * 1024, 512, 1 },
+	{ "N25Q032A13ESE40F", MF_ID_ST,         0xba161000, 64 * 1024, 64,  0 },
+	{ "N25Q064A13ESE40F", MF_ID_ST,         0xba171000, 64 * 1024, 128, 0 },
+	{ "N25Q128A13ESE40F", MF_ID_ST,         0xba181000, 64 * 1024, 256, 0 },
+	{ "N25Q256A",         MF_ID_ST,         0xba191000, 64 * 1024, 512, 1 },
+	{ "MT25QL512AB",      MF_ID_ST,         0xba201044, 64 * 1024, 1024,1 },
+	{ "GD25Q32B",         MF_ID_GIGADEVICE, 0x40160000, 64 * 1024, 64,  0 },
+	{ "GD25Q64B",         MF_ID_GIGADEVICE, 0x40170000, 64 * 1024, 128, 0 },
+	{ "GD25Q64CSIG",      MF_ID_GIGADEVICE, 0x4017c840, 64 * 1024, 128, 0 },
+	{ "GD25Q128C",        MF_ID_GIGADEVICE, 0x40180000, 64 * 1024, 256, 0 },
+	{ "GD25Q128CSIG",     MF_ID_GIGADEVICE, 0x4018c840, 64 * 1024, 256, 0 },
+};
+
+static const struct chip_info dummy_chip_data[] = {
+#ifdef ON_BOARD_4M_FLASH_COMPONENT
+	{ "Generic32Mb", 0x00, 0x00000000, 64 * 1024, 64, 0 }
+#elif ON_BOARD_8M_FLASH_COMPONENT
+	{ "Generic64Mb", 0x00, 0x00000000, 64 * 1024, 128, 0 }
+#elif ON_BOARD_16M_FLASH_COMPONENT
+	{ "Generic128Mb", 0x00, 0x00000000, 64 * 1024, 256, 0 }
+#elif ON_BOARD_32M_FLASH_COMPONENT
+	{ "Generic256Mb", 0x00, 0x00000000, 64 * 1024, 512, 1 }
+#endif
 };
 
 #ifdef MORE_BUF_MODE
 static int bbu_mb_spic_trans(const u8 code, const u32 addr, u8 *buf, const size_t n_tx, const size_t n_rx, int flag)
 {
 	u32 reg_mb, reg_ctl, reg_opcode, reg_data, reg_master;
-	int i, q, r;
+	unsigned int i, q, r;
 	int rc = -1;
 
 	if (flag != SPIC_READ_BYTES && flag != SPIC_WRITE_BYTES)
@@ -476,10 +512,10 @@ static int raspi_4byte_mode(int enable)
 	ra_outl(SPI_REG_CTL, reg_ctl);
 	ra_outl(SPI_REG_Q_CTL, reg_qctl);
 
-	if (spi_chip_info->id == 0x1) // Spansion
+	if (spi_chip_info->id == MF_ID_SPANSION) // Spansion
 	{
 		u8 br, br_cfn; // bank register
-		
+
 		br = (enable)? 0x81 : 0x0;
 		raspi_write_rg(OPCODE_BRWR, &br);
 		raspi_read_rg(OPCODE_BRRD, &br_cfn);
@@ -496,7 +532,7 @@ static int raspi_4byte_mode(int enable)
 		retval = bbu_spic_trans(code, 0, NULL, 1, 0, 0);
 
 		// for Winbond's W25Q256FV, need to clear extend address register
-		if ((!enable) && (spi_chip_info->id == 0xef)) {
+		if ((!enable) && (spi_chip_info->id == MF_ID_WINBOND)) {
 			code = 0x0;
 			raspi_write_enable();
 			raspi_write_rg(0xc5, &code);
@@ -514,7 +550,7 @@ static void raspi_drive_strength(void)
 {
 	u8 code = 0;
 
-	if (spi_chip_info->id == 0xef) {
+	if (spi_chip_info->id == MF_ID_WINBOND) {
 		/* set Winbond DVP[1:0] as 10 (driving strength 50%) */
 		if (raspi_read_rg(0x15, &code) == 0) {
 			/* Winbond DVP[1:0] is 11 by default (driving strength 25%) */
@@ -595,39 +631,30 @@ static int raspi_erase_sector(u32 offset)
 	return 0;
 }
 
-struct chip_info *chip_prob(void)
+static const struct chip_info *chip_prob(void)
 {
-	struct chip_info *info, *match;
 	u8 buf[5] = {0};
-	u32 jedec, weight;
+	u32 jedec;
 	int i;
 
 	raspi_read_devid(buf, 5);
 	jedec = (u32)((u32)(buf[1] << 24) | ((u32)buf[2] << 16) | ((u32)buf[3] << 8) | (u32)buf[4]);
 
-	printf("spi device id: %x %x %x %x\n", buf[0], buf[1], buf[2], buf[3]);
+	printf("SPI chip ID: %02x %02x %02x %02x", buf[0], buf[1], buf[2], buf[3]);
 
-	// FIXME, assign default as AT25D
-	weight = 0xffffffff;
-	match = &chips_data[0];
-	for (i = 0; i < sizeof(chips_data)/sizeof(chips_data[0]); i++) {
-		info = &chips_data[i];
+	for (i = 0; i < ARRAY_SIZE(chips_data); i++) {
+		const struct chip_info *info = &chips_data[i];
 		if (info->id == buf[0]) {
-			if ((info->jedec_id & 0xffffff00) == jedec)
-			{
-				printf("find flash: %s\n", info->name);
+			if ((info->jedec_id & 0xffffff00) == jedec) {
+				printf(" - %s %s\n", mf_name(info->id), info->name);
 				return info;
-			}
-
-			if (weight > (info->jedec_id ^ jedec)) {
-				weight = info->jedec_id ^ jedec;
-				match = info;
 			}
 		}
 	}
-	printf("Warning: un-recognized chip ID, please update bootloader!\n");
 
-	return match;
+	printf("\nWarning: unrecognized chip ID, using %s, please update bootloader!\n", dummy_chip_data[0].name);
+
+	return dummy_chip_data;
 }
 
 unsigned long raspi_init(void)
@@ -642,14 +669,29 @@ unsigned long raspi_init(void)
 	return spi_chip_info->sector_size * spi_chip_info->n_sectors;
 }
 
-int raspi_erase(unsigned int offs, int len)
+static unsigned int raspi_get_offset(int offset)
+{
+	if (offset < 0) {
+		// offset relative to the end of actual size
+		return (unsigned int)((signed int)(spi_chip_info->sector_size * spi_chip_info->n_sectors) + offset);
+	}
+	else {
+		// regular offset starting from 0
+		return (unsigned int)offset;
+	}
+}
+
+int raspi_erase(int offset, int len)
 {
 	int ret = 0;
+	unsigned int offs;
+
+	offs = raspi_get_offset( offset );
 
 	ra_dbg("%s: offs:%x len:%x\n", __func__, offs, len);
 
 	/* sanity checks */
-	if (len == 0)
+	if (len <= 0)
 		return 0;
 
 	/* Wait until finished previous write command. */
@@ -671,7 +713,7 @@ int raspi_erase(unsigned int offs, int len)
 		offs += spi_chip_info->sector_size;
 		len -= spi_chip_info->sector_size;
 		LED_ALERT_BLINK();
-		printf(".");
+		printf("e");
 	}
 
 	if (spi_chip_info->addr4b)
@@ -682,14 +724,17 @@ int raspi_erase(unsigned int offs, int len)
 	return ret;
 }
 
-int raspi_read(char *buf, unsigned int from, int len)
+int raspi_read(char *buf, int offset, int len)
 {
 	int more, rdlen = 0;
+	unsigned int from;
+
+	from = raspi_get_offset( offset );
 
 	ra_dbg("%s: from:%x len:%x \n", __func__, from, len);
 
 	/* sanity checks */
-	if (len == 0)
+	if (len <= 0)
 		return 0;
 
 	/* Wait till previous write/erase is done. */
@@ -742,18 +787,21 @@ int raspi_read(char *buf, unsigned int from, int len)
 	return rdlen;
 }
 
-int raspi_write(char *buf, unsigned int to, int len)
+int raspi_write(char *buf, int offset, int len)
 {
 	u32 page_offset, page_size;
 	int rc = 0, retlen = 0;
 	int wrto, wrlen, more;
+	unsigned int to;
 	char *wrbuf;
 
 	ra_dbg("%s: to:%x len:%x \n", __func__, to, len);
 
 	/* sanity checks */
-	if (len == 0)
+	if (len <= 0)
 		return 0;
+
+	to = raspi_get_offset( offset );
 
 	if (to + len > spi_chip_info->sector_size * spi_chip_info->n_sectors)
 		return -1;
@@ -819,7 +867,7 @@ int raspi_write(char *buf, unsigned int to, int len)
 		if ((retlen & 0xffff) == 0)
 		{
 			LED_ALERT_BLINK();
-			printf(".");
+			printf("w");
 		}
 
 		if (rc > 0) {
@@ -848,24 +896,28 @@ exit_mtd_write:
 	return retlen;
 }
 
-int raspi_erase_write(char *buf, unsigned int offs, int count)
+int raspi_erase_write(char *buf, int offset, int len)
 {
 	int blocksize = spi_chip_info->sector_size;
 	int blockmask = blocksize - 1;
+	unsigned int max_size;
+	int offs;
 
-	ra_dbg("%s: offs:%x, count:%x\n", __func__, offs, count);
+	offs = raspi_get_offset(offset);
 
-	if (count > (spi_chip_info->sector_size * spi_chip_info->n_sectors) -
-			(CFG_BOOTLOADER_SIZE + CFG_CONFIG_SIZE + CFG_FACTORY_SIZE)) {
-		printf("Abort: image size larger than %d!\n\n", (spi_chip_info->sector_size * spi_chip_info->n_sectors) -
-				(CFG_BOOTLOADER_SIZE + CFG_CONFIG_SIZE + CFG_FACTORY_SIZE));
+	ra_dbg("%s: offs:%x, count:%x\n", __func__, offs, len);
+
+	max_size = (spi_chip_info->sector_size * spi_chip_info->n_sectors) - (CFG_BOOTLOADER_SIZE + CFG_BOOTENV_SIZE + CFG_MISC_SIZE + CFG_RADIO_SIZE);
+
+	if (len > max_size) {
+		printf("Abort: image size larger than %d!\n\n", max_size);
 		udelay(10*1000*1000);
 		return -1;
 	}
 
-	while (count > 0) {
+	while (len > 0) {
 #define BLOCK_ALIGNE(a) (((a) & blockmask))
-		if (BLOCK_ALIGNE(offs) || (count < blocksize)) {
+		if (BLOCK_ALIGNE(offs) || (len < blocksize)) {
 			char *block;
 			unsigned int piece, blockaddr;
 			int piece_size;
@@ -887,7 +939,7 @@ int raspi_erase_write(char *buf, unsigned int offs, int count)
 			}
 
 			piece = offs & blockmask;
-			piece_size = min(count, blocksize - piece);
+			piece_size = min(len, blocksize - piece);
 			memcpy(block + piece, buf, piece_size);
 
 			if (raspi_erase(blockaddr, blocksize) != 0) {
@@ -925,10 +977,10 @@ int raspi_erase_write(char *buf, unsigned int offs, int count)
 
 			buf += piece_size;
 			offs += piece_size;
-			count -= piece_size;
+			len -= piece_size;
 		}
 		else {
-			unsigned int aligned_size = count & ~blockmask;
+			unsigned int aligned_size = len & ~blockmask;
 			char *temp;
 			int i;
 			temp = malloc(blocksize);
@@ -970,7 +1022,7 @@ int raspi_erase_write(char *buf, unsigned int offs, int count)
 	
 			buf += aligned_size;
 			offs += aligned_size;
-			count -= aligned_size;
+			len -= aligned_size;
 		}
 	}
 	printf("Done!\n");
@@ -1028,9 +1080,9 @@ int do_flerase (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	{
 		printf("\n Erase linux kernel block !!\n");
 		printf("From 0x%X length 0x%X\n", CFG_KERN_ADDR - CFG_FLASH_BASE,
-				size - (CFG_BOOTLOADER_SIZE + CFG_CONFIG_SIZE + CFG_FACTORY_SIZE));
+				size - (CFG_BOOTLOADER_SIZE + CFG_BOOTENV_SIZE + CFG_RADIO_SIZE));
 		rcode = raspi_erase(CFG_KERN_ADDR - CFG_FLASH_BASE,
-				size - (CFG_BOOTLOADER_SIZE + CFG_CONFIG_SIZE + CFG_FACTORY_SIZE));
+				size - (CFG_BOOTLOADER_SIZE + CFG_BOOTENV_SIZE + CFG_RADIO_SIZE));
 		return rcode;
 	}
 	else if (strcmp(argv[1], "uboot") == 0) 

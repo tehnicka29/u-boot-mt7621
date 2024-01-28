@@ -26,12 +26,12 @@
 #ifndef CONFIG_MIPS16
 #define __HAVE_ARCH_STRNICMP
 #define __HAVE_ARCH_STRNICMP
-#define __HAVE_ARCH_STRCPY
-#define __HAVE_ARCH_STRNCPY
+//#define __HAVE_ARCH_STRCPY
+//#define __HAVE_ARCH_STRNCPY
 #define __HAVE_ARCH_STRCAT
 #define __HAVE_ARCH_STRNCAT
-#define __HAVE_ARCH_STRCMP
-#define __HAVE_ARCH_STRNCMP
+//#define __HAVE_ARCH_STRCMP
+//#define __HAVE_ARCH_STRNCMP
 #define __HAVE_ARCH_STRDUP
 #define __HAVE_ARCH_STRSPN
 #define __HAVE_ARCH_STRPBRK
@@ -79,8 +79,6 @@ int strnicmp(const char *s1, const char *s2, size_t len)
 	return (int)c1 - (int)c2;
 }
 #endif
-
-char * ___strtok;
 
 #ifndef __HAVE_ARCH_STRCPY
 /**
@@ -223,6 +221,21 @@ char * strchr(const char * s, int c)
 }
 #endif
 
+#ifndef __HAVE_ARCH_STRLEN
+/**
+ * strlen - Find the length of a string
+ * @s: The string to be sized
+ */
+size_t strlen(const char * s)
+{
+	const char *sc;
+
+	for (sc = s; *sc != '\0'; ++sc)
+		/* nothing */;
+	return sc - s;
+}
+#endif
+
 #ifndef __HAVE_ARCH_STRRCHR
 /**
  * strrchr - Find the last occurrence of a character in a string
@@ -237,21 +250,6 @@ char * strrchr(const char * s, int c)
 	       return (char *)p;
        } while (--p >= s);
        return NULL;
-}
-#endif
-
-#ifndef __HAVE_ARCH_STRLEN
-/**
- * strlen - Find the length of a string
- * @s: The string to be sized
- */
-size_t strlen(const char * s)
-{
-	const char *sc;
-
-	for (sc = s; *sc != '\0'; ++sc)
-		/* nothing */;
-	return sc - s;
 }
 #endif
 
@@ -334,6 +332,7 @@ char * strpbrk(const char * cs,const char * ct)
 #endif
 
 #ifndef __HAVE_ARCH_STRTOK
+static char * ___strtok;
 /**
  * strtok - Split a string into tokens
  * @s: The string to be searched

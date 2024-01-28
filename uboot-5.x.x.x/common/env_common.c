@@ -37,11 +37,6 @@
 # define SHOW_BOOT_PROGRESS(arg)
 #endif
 
-#ifdef CONFIG_AMIGAONEG3SE
-	extern void enable_nvram(void);
-	extern void disable_nvram(void);
-#endif
-
 #undef DEBUG_ENV
 #ifdef DEBUG_ENV
 #define DEBUGF(fmt,args...) printf(fmt ,##args)
@@ -60,8 +55,6 @@ uchar (*env_get_char)(int) = env_get_char_init;
 /************************************************************************
  * Default settings to be used when no valid environment is found
  */
-#define XMK_STR(x)	#x
-#define MK_STR(x)	XMK_STR(x)
 
 uchar default_environment[] = {
 #ifdef	CONFIG_BOOTARGS
@@ -86,7 +79,7 @@ uchar default_environment[] = {
 	"loads_echo="	MK_STR(CONFIG_LOADS_ECHO)	"\0"
 #endif
 #ifdef	CONFIG_ETHADDR
-	"ethaddr="	MK_STR(CONFIG_ETHADDR)		"\0"
+	"ethaddr="	CONFIG_ETHADDR	"\0"
 #endif
 #ifdef	CONFIG_ETH1ADDR
 	"eth1addr="	MK_STR(CONFIG_ETH1ADDR)		"\0"
@@ -98,10 +91,10 @@ uchar default_environment[] = {
 	"eth3addr="	MK_STR(CONFIG_ETH3ADDR)		"\0"
 #endif
 #ifdef	CONFIG_IPADDR
-	"ipaddr=" MK_STR(CONFIG_IPADDR)		"\0"
+	"ipaddr=" CONFIG_IPADDR "\0"
 #endif
 #ifdef	CONFIG_SERVERIP
-	"serverip="	MK_STR(CONFIG_SERVERIP)		"\0"
+	"serverip="	CONFIG_SERVERIP "\0"
 #endif
 #ifdef	CFG_AUTOLOAD
 	"autoload="	CFG_AUTOLOAD			"\0"
@@ -116,13 +109,13 @@ uchar default_environment[] = {
 	"gatewayip="	MK_STR(CONFIG_GATEWAYIP)	"\0"
 #endif
 #ifdef	CONFIG_NETMASK
-	"netmask="	MK_STR(CONFIG_NETMASK)		"\0"
+	"netmask=" CONFIG_NETMASK "\0"
 #endif
 #ifdef	CONFIG_HOSTNAME
 	"hostname="	MK_STR(CONFIG_HOSTNAME)		"\0"
 #endif
 #ifdef	CONFIG_BOOTFILE
-	"bootfile="	MK_STR(CONFIG_BOOTFILE)		"\0"
+	"bootfile="	CONFIG_BOOTFILE "\0"
 #endif
 #ifdef	CONFIG_LOADADDR
 	"loadaddr="	MK_STR(CONFIG_LOADADDR)		"\0"
@@ -130,15 +123,8 @@ uchar default_environment[] = {
 #ifdef  CONFIG_CLOCKS_IN_MHZ
 	"clocks_in_mhz=1\0"
 #endif
-#if defined(CONFIG_PCI_BOOTDELAY) && (CONFIG_PCI_BOOTDELAY > 0)
-	"pcidelay="	MK_STR(CONFIG_PCI_BOOTDELAY)	"\0"
-#endif
 	"\0"
 };
-
-#if defined(CFG_ENV_IS_IN_NAND)		/* Environment is in Nand Flash */
-int default_environment_size = sizeof(default_environment);
-#endif
 
 void env_crc_update (void)
 {
@@ -161,21 +147,6 @@ static uchar env_get_char_init (int index)
 	return (c);
 }
 
-#ifdef CONFIG_AMIGAONEG3SE
-uchar env_get_char_memory (int index)
-{
-	DECLARE_GLOBAL_DATA_PTR;
-	uchar retval;
-	enable_nvram();
-	if (gd->env_valid) {
-		retval = ( *((uchar *)(gd->env_addr + index)) );
-	} else {
-		retval = ( default_environment[index] );
-	}
-	disable_nvram();
-	return retval;
-}
-#else
 uchar env_get_char_memory (int index)
 {
 	DECLARE_GLOBAL_DATA_PTR;
@@ -186,7 +157,6 @@ uchar env_get_char_memory (int index)
 		return ( default_environment[index] );
 	}
 }
-#endif
 
 uchar *env_get_addr (int index)
 {
@@ -203,12 +173,7 @@ void env_relocate (void)
 {
 	DECLARE_GLOBAL_DATA_PTR;
 
-	DEBUGF ("%s[%d] offset = 0x%lx\n", __FUNCTION__,__LINE__,
-		gd->reloc_off);
-
-#ifdef CONFIG_AMIGAONEG3SE
-	enable_nvram();
-#endif
+	debug("%s[%d] offset = 0x%lx\n", __FUNCTION__, __LINE__, gd->reloc_off);
 
 #ifdef ENV_IS_EMBEDDED
 	/*
@@ -222,7 +187,7 @@ void env_relocate (void)
 	 * We must allocate a buffer for the environment
 	 */
 	env_ptr = (env_t *)malloc (CFG_ENV_SIZE);
-	DEBUGF ("%s[%d] malloced ENV at %p\n", __FUNCTION__,__LINE__,env_ptr);
+	debug("%s[%d] malloced ENV at %p\n", __FUNCTION__, __LINE__, env_ptr);
 #endif
 
 	/*
@@ -231,7 +196,8 @@ void env_relocate (void)
 	env_get_char = env_get_char_memory;
 
 	if (gd->env_valid == 0) {
-#if defined(CONFIG_GTH)	|| defined(CFG_ENV_IS_NOWHERE)	/* Environment not changable */
+
+#if defined(CFG_ENV_IS_NOWHERE)	/* Environment is not changeable */
 		puts ("Using default environment\n\n");
 #else
 		puts ("*** Warning - bad CRC, using default environment\n\n");
@@ -258,10 +224,6 @@ void env_relocate (void)
 		env_relocate_spec ();
 	}
 	gd->env_addr = (ulong)&(env_ptr->data);
-
-#ifdef CONFIG_AMIGAONEG3SE
-	disable_nvram();
-#endif
 }
 
 #ifdef CONFIG_AUTO_COMPLETE

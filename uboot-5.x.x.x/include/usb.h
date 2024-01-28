@@ -320,14 +320,9 @@ int usb_set_interface(struct usb_device *dev, int interface, int alternate);
  * appropriately.
  */
 /* Create various pipes... */
-#if defined (RALINK_OHCI) || defined (RALINK_EHCI)
-#define create_pipe(dev,endpoint) \
-		(((dev)->devnum << 8) | (endpoint << 15) | ((dev)->speed << 26) | (dev)->maxpacketsize)
-#else
 #define create_pipe(dev,endpoint) \
 		(((dev)->devnum << 8) | ((endpoint) << 15) | \
 		(dev)->maxpacketsize)
-#endif
 
 #define default_pipe(dev) ((dev)->speed << 26)
 

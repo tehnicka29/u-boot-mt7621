@@ -124,7 +124,8 @@ static void BootpCopyNetParams(Bootp_t *bp)
 	if (tmp_ip != 0)
 		NetCopyIP(&NetServerIP, &bp->bp_siaddr);
 	memcpy (NetServerEther, ((Ethernet_t *)NetRxPkt)->et_src, 6);
-	if (strlen(bp->bp_file) > 0)
+
+	if (bp->bp_file[0] != '\0')
 		copy_filename (BootFile, bp->bp_file, sizeof(BootFile));
 
 	debug ("Bootfile: %s\n", BootFile);
@@ -908,8 +909,10 @@ DhcpHandler(uchar * pkt, unsigned dest, unsigned src, unsigned len)
 #endif
 				}
 			}
+#ifdef TFTP_SUPPORT
 			TftpStart();
 			return;
+#endif
 		}
 		break;
 	default:

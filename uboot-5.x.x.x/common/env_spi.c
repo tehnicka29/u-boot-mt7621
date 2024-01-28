@@ -8,7 +8,6 @@
 #include <malloc.h>
 #include <spi_api.h>
 
-
 #if 1 //((CONFIG_COMMANDS&(CFG_CMD_ENV|CFG_CMD_FLASH)) == (CFG_CMD_ENV|CFG_CMD_FLASH))
 #define CMD_SAVEENV
 #elif defined(CFG_ENV_ADDR_REDUND)
@@ -21,16 +20,10 @@ char * env_name_spec = "SPI Flash";
 
 extern uchar environment[];
 env_t *env_ptr = (env_t *)(&environment[0]);
-#ifdef CMD_SAVEENV
-static env_t *flash_addr = (env_t *)(CFG_ENV_ADDR - CFG_FLASH_BASE);
-#endif
 
 #else /* ! ENV_IS_EMBEDDED */
 
 env_t *env_ptr;
-#ifdef CMD_SAVEENV
-static env_t *flash_addr = (env_t *)(CFG_ENV_ADDR - CFG_FLASH_BASE);
-#endif
 
 #endif /* ENV_IS_EMBEDDED */
 
@@ -63,9 +56,10 @@ int spi_env_init(void)
 	if (env_ptr == NULL)
 		return -1;
 
-	if (raspi_read((u8 *)env_ptr, (unsigned int)flash_addr, CFG_ENV_SIZE) != CFG_ENV_SIZE)
+	if (raspi_read((u8 *)env_ptr, CFG_BOOTENV_OFFSET, CFG_ENV_SIZE) != CFG_ENV_SIZE)
 		return -1;
-	else if (crc32(0, env_ptr->data, ENV_SIZE) == env_ptr->crc) {
+
+	if (crc32(0, env_ptr->data, ENV_SIZE) == env_ptr->crc) {
 		gd->env_addr  = (ulong)&(env_ptr->data);
 		gd->env_valid = 1;
 		return(0);
@@ -80,6 +74,9 @@ int spi_env_init(void)
 
 int saveenv(void)
 {
+#ifdef CFG_ENV_IS_NOWHERE
+	return 0;
+#else
 	int	len, rc;
 	ulong	flash_sect_addr;
 #if defined(CFG_ENV_SECT_SIZE) && (CFG_ENV_SECT_SIZE > CFG_ENV_SIZE)
@@ -91,8 +88,8 @@ int saveenv(void)
 	int rcode = 0;
 
 #if defined(CFG_ENV_SECT_SIZE) && (CFG_ENV_SECT_SIZE > CFG_ENV_SIZE)
-	flash_offset	= ((ulong)flash_addr) & (CFG_ENV_SECT_SIZE-1);
-	flash_sect_addr	= ((ulong)flash_addr) & ~(CFG_ENV_SECT_SIZE-1);
+	flash_offset	= (CFG_BOOTENV_OFFSET) & (CFG_ENV_SECT_SIZE-1);
+	flash_sect_addr	= (CFG_BOOTENV_OFFSET) & ~(CFG_ENV_SECT_SIZE-1);
 	len	= CFG_ENV_SECT_SIZE;
 
 	/*
@@ -127,6 +124,7 @@ int saveenv(void)
 	}
 
 	return rcode;
+#endif
 }
 
 #endif /* CMD_SAVEENV */
@@ -135,8 +133,8 @@ int saveenv(void)
 void env_relocate_spec (void)
 {
 #if !defined(ENV_IS_EMBEDDED)
-	raspi_read((u8 *)env_ptr, (unsigned int)flash_addr, CFG_ENV_SIZE);
-#endif /* ! ENV_IS_EMBEDDED */
+	raspi_read((u8 *)env_ptr, CFG_BOOTENV_OFFSET, CFG_ENV_SIZE);
+#endif
 }
 
 #endif /* CFG_ENV_IS_IN_SPI */

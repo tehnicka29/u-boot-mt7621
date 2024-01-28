@@ -13,11 +13,13 @@
 #if defined(CFG_CMD_HTTPD)
 #include "httpd.h"
 
+#include "spi_api.h"
+
 #include "../httpd/uipopt.h"
 #include "../httpd/uip.h"
 #include "../httpd/uip_arp.h"
 
-static int arptimer = 0;
+static int arptimer;
 
 void HttpdHandler(void){
 	int i;
@@ -54,15 +56,14 @@ void HttpdHandler(void){
 
 // start http daemon
 void HttpdStart(void){
+	arptimer = 0;
 	uip_init();
 	httpd_init();
 }
 
-int flash_erase_write(char *buf, unsigned int offs, int count) {
+static int flash_erase_write(char *buf, long offs, unsigned long count) {
 	int result;
-#if defined (CFG_ENV_IS_IN_NAND)
-	result = ranand_erase_write(buf, offs, count);
-#elif defined (CFG_ENV_IS_IN_SPI)
+#if defined (CFG_ENV_IS_IN_SPI)
 	result = raspi_erase_write(buf, offs, count);
 #else
 	unsigned long e_end = CFG_FLASH_BASE + offs + count - 1;
@@ -75,18 +76,41 @@ int flash_erase_write(char *buf, unsigned int offs, int count) {
 	return result;
 }
 
-int do_http_upgrade(const ulong size, const int upgrade_type){
-	if(upgrade_type == WEBFAILSAFE_UPGRADE_TYPE_UBOOT){
+extern unsigned char *webfailsafe_data_pointer_base;
+
+int do_http_upgrade(const ulong size, const int upgrade_type) {
+	char *data = webfailsafe_data_pointer_base;
+	if (upgrade_type == WEBFAILSAFE_UPGRADE_TYPE_UBOOT) {
+		// TODO: check signature (AT LEAST - for correct interrupt vector table?)
 		printf("\n\n****************************\n*     U-BOOT UPGRADING     *\n* DO NOT POWER OFF DEVICE! *\n****************************\n\n");
-		return( flash_erase_write((char *) WEBFAILSAFE_UPLOAD_RAM_ADDRESS, WEBFAILSAFE_UPLOAD_UBOOT_ADDRESS - CFG_FLASH_BASE, WEBFAILSAFE_UPLOAD_UBOOT_SIZE_IN_BYTES ) );
-	} else if(upgrade_type == WEBFAILSAFE_UPGRADE_TYPE_FIRMWARE){
+		return(flash_erase_write(data, CFG_BOOTLOADER_OFFSET, UBOOT_FILE_SIZE_MAX ) );
+	} else if (upgrade_type == WEBFAILSAFE_UPGRADE_TYPE_FIRMWARE) {
+		// TODO: check signature (correct image header, data must be larger than header size?)
 		printf("\n\n****************************\n*    FIRMWARE UPGRADING    *\n* DO NOT POWER OFF DEVICE! *\n****************************\n\n");
-		return( flash_erase_write((char *) WEBFAILSAFE_UPLOAD_RAM_ADDRESS, WEBFAILSAFE_UPLOAD_KERNEL_ADDRESS - CFG_FLASH_BASE, size ) );
-	} else if(upgrade_type == WEBFAILSAFE_UPGRADE_TYPE_FACTORY){
-		printf("\n\n****************************\n*    FACTORY  UPGRADING    *\n* DO NOT POWER OFF DEVICE! *\n****************************\n\n");
-		return( flash_erase_write((char *) WEBFAILSAFE_UPLOAD_RAM_ADDRESS, WEBFAILSAFE_UPLOAD_FACTORY_ADDRESS - CFG_FLASH_BASE, WEBFAILSAFE_UPLOAD_FACTORY_SIZE_IN_BYTES ) );
-	} else {
-		return(-1);
+		return(flash_erase_write(data, CFG_KERNEL_OFFSET, size));
+	} else if (upgrade_type == WEBFAILSAFE_UPGRADE_TYPE_RADIO) {
+		printf("\n\n****************************\n*    RADIO  UPGRADING    *\n* DO NOT POWER OFF DEVICE! *\n****************************\n\n");
+		return( flash_erase_write(data, CFG_RADIO_OFFSET, CFG_RADIO_SIZE ) );
+	} else if (upgrade_type == WEBFAILSAFE_UPGRADE_TYPE_CONFIG) {
+		// TODO: check signature (correct mac, etc.)
+		printf( "\n\n****************************\n*    CONFIG  UPGRADING    *\n* DO NOT POWER OFF DEVICE! *\n****************************\n\n" );
+		return ( flash_erase_write(data, CFG_CONFIG_OFFSET, CFG_CONFIG_SIZE));
+	} else if (upgrade_type == WEBFAILSAFE_UPGRADE_TYPE_TPLINK) {
+		// TODO: check signature (correct partition table, etc.)
+		printf( "\n\n****************************\n*    TPLINK  UPGRADING    *\n* DO NOT POWER OFF DEVICE! *\n****************************\n\n" );
+		return (flash_erase_write(data, CFG_TPLINK_OFFSET, CFG_TPLINK_SIZE ));
+	} else if (upgrade_type == WEBFAILSAFE_UPGRADE_TYPE_INITRAMFS) {
+		// TODO: check signature (correct image header, data must be equal to header size?)
+		char *argv[2], buf[12];
+		printf( "\n\n****************************\n*   INITRAMFS UPLOADING   *\n* DO NOT POWER OFF DEVICE! *\n****************************\n\n" );
+		LED_ALERT_OFF();
+		sprintf(buf, "0x%08X", data);
+		argv[0] = (char*)__func__; // or "bootm"
+		argv[1] = buf;
+		do_bootm( NULL, 0, 2, argv );
+	} else if (upgrade_type == WEBFAILSAFE_UPGRADE_TYPE_ROOTFS_RESET) {
+		printf("\n\n****************************\n*     RESETTING ROOTFS    *\n* DO NOT POWER OFF DEVICE! *\n****************************\n\n");
+		return rootfs_func(0 /* erase/reset */);
 	}
 	return(-1);
 }
@@ -99,12 +123,12 @@ int do_http_progress(const int state){
 	switch(state){
 		case WEBFAILSAFE_PROGRESS_START:
 
-			// blink LED fast 10 times
-			for(i = 0; i < 10; ++i){
-				LED_ALERT_ON();
-				milisecdelay(25);
-				LED_ALERT_OFF();
-				milisecdelay(25);
+			// blink LED fast a few times
+			for (i = 0; i < 10; ++i) {
+				LED_WPS_ON();
+				milisecdelay(50);
+				LED_WPS_OFF();
+				milisecdelay(50);
 			}
 
 			printf("HTTP server is ready!\n\n");
@@ -126,11 +150,11 @@ int do_http_progress(const int state){
 			printf("*** ERROR: HTTP ugrade failed!\n\n");
 
 			// blink LED fast for 4 sec
-			for(i = 0; i < 80; ++i){
+			for(i = 0; i < 40; ++i){
 				LED_ALERT_ON();
-				milisecdelay(25);
+				milisecdelay(50);
 				LED_ALERT_OFF();
-				milisecdelay(25);
+				milisecdelay(50);
 			}
 
 			// wait 1 sec

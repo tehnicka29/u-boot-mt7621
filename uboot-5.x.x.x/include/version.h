@@ -29,91 +29,14 @@
 
 #define U_BOOT_VERSION	"U-Boot 1.1.3"
 
-#if defined (RT2880_ASIC_BOARD) || defined (RT2883_ASIC_BOARD) || defined (RT3052_ASIC_BOARD) || defined (RT3352_ASIC_BOARD) || defined (RT3883_ASIC_BOARD) || defined (RT5350_ASIC_BOARD) || defined (RT6855_ASIC_BOARD) || defined (RT6855A_ASIC_BOARD) || defined (MT7620_ASIC_BOARD) || defined (MT7621_ASIC_BOARD) ||defined (MT7628_ASIC_BOARD)
-#define CHIP_TYPE	"ASIC"
-#elif defined (RT2880_FPGA_BOARD) || defined (RT2883_FPGA_BOARD) || defined (RT3052_FPGA_BOARD) || defined (RT3352_FPGA_BOARD) || defined (RT3883_FPGA_BOARD) || defined (RT5350_FPGA_BOARD) || defined (RT6855_FPGA_BOARD) || defined (RT6855A_FPGA_BOARD) || defined (MT7620_FPGA_BOARD) || defined (MT7621_FPGA_BOARD) || defined (MT7628_FPGA_BOARD)
-#define CHIP_TYPE	"FPGA"
-#else
-#error "PLATFORM_TYPE not defined in config.mk"
-#endif
+#define CHIP_TYPE		"ASIC"
 
-#if defined (RT2880_SHUTTLE)
-#define CHIP_VERSION	"2880_Shuttle"
-#elif defined (RT2880_MP)
-#define CHIP_VERSION	"2880_MP"
-#elif defined (RT2883_MP)
-#define CHIP_VERSION	"2883_MP"
-#elif defined (RT3052_MP2)
-#define CHIP_VERSION	"3052_MP2"
-#elif defined (RT3352_MP)
-#define CHIP_VERSION	"3352_MP"
-#elif defined (RT3883_MP)
-#define CHIP_VERSION	"3883_MP"
-#elif defined (RT5350_MP)
-#define CHIP_VERSION	"5350_MP"
-#elif defined (RT6855_MP)
-#define CHIP_VERSION	"6855_MP"
-#elif defined (RT6855A_MP)
-#define CHIP_VERSION	"6855A_MP"
-#elif defined (MT7620_MP)
-#define CHIP_VERSION	"7620_MP"
-#elif defined (MT7621_MP)
 #define CHIP_VERSION	"7621_MP"
-#elif defined (MT7628_MP)
-#define CHIP_VERSION	"7628_MP"
-#else
-#error "CHIP_VER not defined in config.mk"
-#endif
 
-
-#if defined (MAC_TO_100SW_MODE)
-#define GMAC_MODE	"(MAC to 100SW Mode)"
-#elif defined (MAC_TO_100PHY_MODE)
-#define GMAC_MODE	"(MAC to 100PHY Mode)"
-#elif defined (MAC_TO_GIGAPHY_MODE)
-#if defined (RT3883_USE_GE1) || defined (MT7621_USE_GE1)
-#define GMAC_MODE	"(MAC1 to GigaPHY Mode)"
-#elif defined (RT3883_USE_GE2) || defined (MT7621_USE_GE2)
-#define GMAC_MODE	"(MAC2 to GigaPHY Mode)"
-#else
-#define GMAC_MODE	"(MAC to GigaPHY Mode)"
-#endif
-#ifndef MAC_TO_GIGAPHY_MODE_ADDR
-#error "MAC_TO_GIGAPHY_MODE_ADDR not defined in config.mk"
-#endif
-#elif defined (MAC_TO_VITESSE_MODE)
-#define GMAC_MODE	"(MAC to VITESSE Mode)"
-#elif defined (MAC_TO_RTL8367_MODE)
-#define GMAC_MODE	"(MAC to RTL8367 Mode)"
-#elif defined (MAC_TO_MT7530_MODE)
-#define GMAC_MODE	"(MAC to MT7530 Mode)"
-#elif defined (RT3052_ASIC_BOARD) || defined (RT3052_FPGA_BOARD) || \
-      defined (RT3352_ASIC_BOARD) || defined (RT3352_FPGA_BOARD) || \
-      defined (RT5350_ASIC_BOARD) || defined (RT5350_FPGA_BOARD) || \
-      defined (RT6855_ASIC_BOARD) || defined (RT6855_FPGA_BOARD) || \
-      defined (MT7620_ASIC_BOARD) || defined (MT7620_FPGA_BOARD) || \
-      defined (MT7621_ASIC_BOARD) || defined (MT7621_FPGA_BOARD) || \
-      defined (MT7628_ASIC_BOARD) || defined (MT7628_FPGA_BOARD) || \
-      defined (RT6855A_ASIC_BOARD) || defined (RT6855A_FPGA_BOARD)
-
-#if defined (P5_MAC_TO_NONE_MODE)
-#define GMAC_MODE  "(Port5<->None)"
-#elif defined (P5_MAC_TO_PHY_MODE)
-#define GMAC_MODE  "(Port5<->Phy)"
-#elif defined (P5_RGMII_TO_MAC_MODE)
-#define GMAC_MODE  "(Port5<->GigaSW)"
-#elif defined (P5_MII_TO_MAC_MODE)
-#define GMAC_MODE  "(Port5<->RvMII)"
-#elif defined (P5_RMII_TO_MAC_MODE)
-#define GMAC_MODE  "(Port5<->MII)"
-#endif
-
-#else
-#error	"GMAC_MODE not defined"
-#endif
+#define GMAC_MODE		"(MAC to MT7530 Mode)"
 
 #if defined (ON_BOARD_16M_DRAM_COMPONENT)
-#define DRAM_COMPONENT  16 
+#define DRAM_COMPONENT  16
 #elif defined (ON_BOARD_64M_DRAM_COMPONENT)
 #define DRAM_COMPONENT	64
 #elif defined (ON_BOARD_128M_DRAM_COMPONENT)
@@ -124,14 +47,12 @@
 #define DRAM_COMPONENT	512
 #elif defined (ON_BOARD_1024M_DRAM_COMPONENT)
 #define DRAM_COMPONENT	1024
+#elif defined (ON_BOARD_1024M_KGD_DRAM_COMPONENT)
+#define DRAM_COMPONENT	1024
 #elif defined (ON_BOARD_2048M_DRAM_COMPONENT)
 #define DRAM_COMPONENT  2048
 #elif defined (ON_BOARD_4096M_DRAM_COMPONENT)
 #define DRAM_COMPONENT  3584
-#elif defined (RT3883_FPGA_BOARD) || defined (RT3883_ASIC_BOARD) || defined (RT3352_FPGA_BOARD) || defined (RT3352_ASIC_BOARD)
-#define DRAM_COMPONENT	({ int _x = ((RALINK_REG(RT2880_SYSCFG_REG) >> 12) & 0x7); \
-		(_x == 6)? 2048 : (_x == 5)? 1024 : (_x == 4)? 512 : \
-		(_x == 3)? 256 : (_x == 2)? 128 : (_x == 1)? 64 : 16; })
 #elif defined CFG_ENV_IS_IN_SPI
 #define DRAM_COMPONENT	({ int _x = ((RALINK_REG(RT2880_SYSCFG_REG) >> 26) & 0x3); \
 		(_x == 0x2)? 256 : (_x == 0x1)? 128 : 64; })
@@ -143,32 +64,16 @@
 #define DRAM_BUS	16
 #elif defined (ON_BOARD_32BIT_DRAM_BUS)
 #define DRAM_BUS	32
-#elif defined (RT3883_FPGA_BOARD) || defined (RT3883_ASIC_BOARD) || defined (RT3352_FPGA_BOARD) || defined (RT3352_ASIC_BOARD) 
-#define DRAM_BUS	({ ((RALINK_REG(RT2880_SYSCFG_REG) >> 15) & 0x1)? 32 : 16; })
 #elif defined (CFG_ENV_IS_IN_SPI)
 #define DRAM_BUS	({ ((RALINK_REG(RT2880_SYSCFG_REG) >> 28) & 0x1)? 32 : 16; })
 #else
 #error "DRAM BUS not defined"
 #endif
 
-#if defined (CFG_ENV_IS_IN_SPI) && !defined (RT3883_FPGA_BOARD) && !defined (RT3883_FPGA_BOARD) && !defined (RT6855A_FPGA_BOARD) && !defined (RT6855A_ASIC_BOARD) && !defined (MT7620_FPGA_BOARD) && !defined (MT7620_ASIC_BOARD) && !defined (MT7621_FPGA_BOARD) && !defined (MT7621_ASIC_BOARD) && !defined (MT7628_FPGA_BOARD) && !defined (MT7628_ASIC_BOARD)
-#if defined (RT3352_FPGA_BOARD) || defined (RT3352_ASIC_BOARD)
-#define DDR_INFO	({ ((RALINK_REG(RT2880_SYSCFG_REG) >> 17) & 0x1)? \
-		(((RALINK_REG(RT2880_SYSCFG_REG) >> 10) & 0x1)? "DDR, width 16" : "DDR, width 8") : \
-		"SDR"; })
+#ifdef ON_BOARD_DDR_WIDTH_8 
+#define DDR_INFO "DDR, width 8"
 #else
-#define DDR_INFO	"SDR"
-#endif
-#else
-#if defined (ON_BOARD_DDR3) || defined (ON_BOARD_DDR2) || defined(ON_BOARD_DDR1)
-  #ifdef ON_BOARD_DDR_WIDTH_8 
-  #define DDR_INFO "DDR, width 8"
-  #else
-  #define DDR_INFO "DDR, width 16"
-  #endif
-#else
-#define DDR_INFO	"SDR"
-#endif
+#define DDR_INFO "DDR, width 16"
 #endif
 
 #define DRAM_SIZE ((DRAM_COMPONENT/8)*(DRAM_BUS/16))
@@ -186,30 +91,9 @@
   #ifndef RT3052_MP2
   #error "32MB flash is only supported by RT3052 MP2 currently"
   #endif
-#else
-  #if defined (RT2880_ASIC_BOARD) || defined (RT2880_FPGA_BOARD) 
-  #error "FLASH SIZE not defined"
-  #elif defined CFG_ENV_IS_IN_FLASH
-  #define FLASH_MSG "Flash component: NOR Flash"
-  #elif defined CFG_ENV_IS_IN_NAND
-  #define FLASH_MSG "Flash component: NAND Flash"
-  #elif defined CFG_ENV_IS_IN_SPI
-  #define FLASH_MSG "Flash component: SPI Flash"
-  #else
-  #error "FLASH TYPE not defined"
-  #endif
 #endif
 
-#if defined(RT2880_FPGA_BOARD) || defined (RT2880_ASIC_BOARD) || \
-    defined(RT3052_FPGA_BOARD) || defined (RT3052_ASIC_BOARD) || \
-    defined(RT3352_FPGA_BOARD) || defined (RT3352_ASIC_BOARD) || \
-    defined(RT3883_FPGA_BOARD) || defined (RT3883_ASIC_BOARD) || \
-    defined(RT5350_FPGA_BOARD) || defined (RT5350_ASIC_BOARD) || \
-    defined(RT6855A_FPGA_BOARD) || defined (RT6855A_ASIC_BOARD)
-#define RLT_MTK_VENDOR_NAME	"Ralink"
-#else
 #define RLT_MTK_VENDOR_NAME	"MediaTek"
-#endif
 
 #define SHOW_VER_STR()	\
 	do {	\

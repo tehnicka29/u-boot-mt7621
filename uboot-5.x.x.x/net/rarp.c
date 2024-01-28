@@ -29,7 +29,7 @@
 #include "rarp.h"
 #include "tftp.h"
 
-#if (CONFIG_COMMANDS & CFG_CMD_NET)
+//#if (CONFIG_COMMANDS & CFG_CMD_NET)
 
 #define TIMEOUT		5		/* Seconds before trying BOOTP again */
 #ifndef	CONFIG_NET_RETRY_COUNT
@@ -66,7 +66,9 @@ RarpHandler(uchar * dummi0, unsigned dummi1, unsigned dummi2, unsigned dummi3)
 #endif
 		}
 	}
-	TftpStart ();
+#ifdef TFTP_SUPPORT
+	TftpStart();
+#endif
 }
 
 
@@ -119,4 +121,4 @@ RarpRequest (void)
 	NetSetHandler(RarpHandler);
 }
 
-#endif /* CFG_CMD_NET */
+//#endif /* CFG_CMD_NET */

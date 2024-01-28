@@ -24,38 +24,13 @@
 #include <common.h>
 #include <command.h>
 #include <net.h>
-#if defined (CFG_ENV_IS_IN_NAND)
-#include <nand_api.h>
-#endif
 
 #if (CONFIG_COMMANDS & CFG_CMD_NET)
 
-#ifdef CFG_GT_6426x
-extern int gt6426x_eth_initialize(bd_t *bis);
+#if defined (CFG_ENV_IS_IN_SPI)
+#include "spi_api.h"
 #endif
 
-extern int au1x00_enet_initialize(bd_t*);
-extern int dc21x4x_initialize(bd_t*);
-extern int e1000_initialize(bd_t*);
-extern int eepro100_initialize(bd_t*);
-extern int eth_3com_initialize(bd_t*);
-extern int fec_initialize(bd_t*);
-extern int inca_switch_initialize(bd_t*);
-extern int mpc5xxx_fec_initialize(bd_t*);
-extern int mpc8220_fec_initialize(bd_t*);
-extern int mv6436x_eth_initialize(bd_t *);
-extern int mv6446x_eth_initialize(bd_t *);
-extern int natsemi_initialize(bd_t*);
-extern int ns8382x_initialize(bd_t*);
-extern int pcnet_initialize(bd_t*);
-extern int plb2800_eth_initialize(bd_t*);
-extern int ppc_4xx_eth_initialize(bd_t *);
-extern int ppc_440x_eth_initialize(bd_t *);
-extern int rtl8139_initialize(bd_t*);
-extern int rtl8169_initialize(bd_t*);
-extern int scc_initialize(bd_t*);
-extern int skge_initialize(bd_t*);
-extern int tsec_initialize(bd_t*, int);
 extern int rt2880_eth_initialize(bd_t *bis);
 
 /*static struct eth_device *eth_devices, *eth_current;*/
@@ -129,94 +104,18 @@ int eth_register(struct eth_device* dev)
 	return 0;
 }
 
+void eth_preinit(void)
+{
+	eth_devices = NULL;
+	eth_current = NULL;
+}
+
 int eth_initialize(bd_t *bis)
 {
 	unsigned char rt2880_gmac1_mac[6];
 	int eth_number = 0, regValue=0;
 
-	eth_devices = NULL;
-	eth_current = NULL;
-
-#ifdef CONFIG_DB64360
-	mv6436x_eth_initialize(bis);
-#endif
-#ifdef CONFIG_CPCI750
-	mv6436x_eth_initialize(bis);
-#endif
-#ifdef CONFIG_DB64460
-	mv6446x_eth_initialize(bis);
-#endif
-#if defined(CONFIG_405GP) || defined(CONFIG_405EP) || \
-  ( defined(CONFIG_440) && !defined(CONFIG_NET_MULTI) )
-	ppc_4xx_eth_initialize(bis);
-#endif
-#if defined(CONFIG_440) && defined(CONFIG_NET_MULTI)
-	ppc_440x_eth_initialize(bis);
-#endif
-#ifdef CONFIG_INCA_IP_SWITCH
-	inca_switch_initialize(bis);
-#endif
-#ifdef CONFIG_PLB2800_ETHER
-
-	plb2800_eth_initialize(bis);
-#endif
-#ifdef SCC_ENET
-	scc_initialize(bis);
-#endif
-#if defined(FEC_ENET) || defined(CONFIG_ETHER_ON_FCC)
-	fec_initialize(bis);
-#endif
-#if defined(CONFIG_MPC5xxx_FEC)
-	mpc5xxx_fec_initialize(bis);
-#endif
-#if defined(CONFIG_MPC8220)
-	mpc8220_fec_initialize(bis);
-#endif
-#if defined(CONFIG_SK98)
-	skge_initialize(bis);
-#endif
-#if defined(CONFIG_MPC85XX_TSEC1)
-	tsec_initialize(bis, 0);
-#endif
-#if defined(CONFIG_MPC85XX_TSEC2)
-	tsec_initialize(bis, 1);
-#endif
-#if defined(CONFIG_MPC85XX_FEC)
-	tsec_initialize(bis, 2);
-#endif
-#if defined(CONFIG_AU1X00)
-	au1x00_enet_initialize(bis);
-#endif
-#ifdef CONFIG_E1000
-	e1000_initialize(bis);
-#endif
-#ifdef CONFIG_EEPRO100
-	eepro100_initialize(bis);
-#endif
-#ifdef CONFIG_TULIP
-	dc21x4x_initialize(bis);
-#endif
-#ifdef CONFIG_3COM
-	eth_3com_initialize(bis);
-#endif
-#ifdef CONFIG_PCNET
-	pcnet_initialize(bis);
-#endif
-#ifdef CFG_GT_6426x
-	gt6426x_eth_initialize(bis);
-#endif
-#ifdef CONFIG_NATSEMI
-	natsemi_initialize(bis);
-#endif
-#ifdef CONFIG_NS8382X
-	ns8382x_initialize(bis);
-#endif
-#if defined(CONFIG_RTL8139)
-	rtl8139_initialize(bis);
-#endif
-#if defined(CONFIG_RTL8169)
-	rtl8169_initialize(bis);
-#endif
+	eth_preinit();
 
 #if defined(CONFIG_RT2880_ETH)
 	rt2880_eth_initialize(bis);
@@ -227,8 +126,7 @@ int eth_initialize(bd_t *bis)
 	} else {
 		struct eth_device *dev = eth_devices;
 		char *ethprime = getenv ("ethprime");
-		unsigned char empty_mac[6]={0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
-
+		const unsigned char empty_mac[2][6] = { { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF }, { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 } };
 
 		do {
 			if (eth_number)
@@ -239,28 +137,21 @@ int eth_initialize(bd_t *bis)
 				puts (" [PRIME]");
 			}
 
-#if defined (MT7621_MP)
-#define GMAC0_OFFSET	0xE000
-#else
-#define GMAC0_OFFSET	0x28
-#endif
-
 			//get Ethernet mac address from flash
-#if defined (CFG_ENV_IS_IN_NAND)
-			ranand_read(rt2880_gmac1_mac, 
-				CFG_FACTORY_ADDR - CFG_FLASH_BASE + GMAC0_OFFSET, 6);
-#elif defined (CFG_ENV_IS_IN_SPI)
-			raspi_read(rt2880_gmac1_mac, 
-				CFG_FACTORY_ADDR - CFG_FLASH_BASE + GMAC0_OFFSET, 6);
-#else //CFG_ENV_IS_IN_FLASH
-			memmove(rt2880_gmac1_mac, CFG_FACTORY_ADDR + GMAC0_OFFSET, 6);
+#if defined (CFG_ENV_IS_IN_SPI)
+#ifdef GMAC0_OFFSET
+			raspi_read(rt2880_gmac1_mac, GMAC0_OFFSET, 6);
+#else
+#error		"GMAC0_OFFSET is not set"
+			#define GMAC0_OFFSET	0xE000
+			raspi_read( rt2880_gmac1_mac, CFG_RADIO_OFFSET + GMAC0_OFFSET, 6 );
 #endif
-
+#else
+#error		"Unsupported configuration"
+			//memmove(rt2880_gmac1_mac, CFG_RADIO_ADDR + GMAC0_OFFSET, 6);
+#endif
 			//if flash is empty, use default mac address
-			if (memcmp(rt2880_gmac1_mac, empty_mac, 6) == 0)
-				eth_parse_enetaddr(CONFIG_ETHADDR, rt2880_gmac1_mac);
-
-			if (memcmp (rt2880_gmac1_mac, "\0\0\0\0\0\0", 6) == 0)
+			if (memcmp(rt2880_gmac1_mac, empty_mac[0], 6) == 0 || memcmp(rt2880_gmac1_mac, empty_mac[1], 6) == 0)
 				eth_parse_enetaddr(CONFIG_ETHADDR, rt2880_gmac1_mac);
 
 			memcpy(dev->enetaddr, rt2880_gmac1_mac, 6);

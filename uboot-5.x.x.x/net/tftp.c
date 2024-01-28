@@ -62,8 +62,7 @@ static char *tftp_filename;
 extern flash_info_t flash_info[CFG_MAX_FLASH_BANKS];
 #endif
 
-static __inline__ void
-store_block (unsigned block, uchar * src, unsigned len)
+static __inline__ void store_block (unsigned block, uchar * src, unsigned len)
 {
 	ulong offset = block * TFTP_BLOCK_SIZE + TftpBlockWrapOffset;
 	ulong newsize = offset + len;
@@ -96,13 +95,11 @@ store_block (unsigned block, uchar * src, unsigned len)
 		NetBootFileXferSize = newsize;
 }
 
-void TftpSend (void);
 static void TftpTimeout (void);
 
 /**********************************************************************/
 
-void
-TftpSend (void)
+void TftpSend(void)
 {
 	volatile uchar *	pkt;
 	volatile uchar *	xp;
@@ -175,9 +172,7 @@ TftpSend (void)
 	NetSendUDPPacket(NetServerEther, NetServerIP, TftpServerPort, TftpOurPort, len);
 }
 
-
-static void
-TftpHandler (uchar * pkt, unsigned dest, unsigned src, unsigned len)
+static void TftpHandler (uchar * pkt, unsigned dest, unsigned src, unsigned len)
 {
 	ushort proto;
 	ushort *s;
@@ -305,9 +300,7 @@ TftpHandler (uchar * pkt, unsigned dest, unsigned src, unsigned len)
 	}
 }
 
-
-static void
-TftpTimeout (void)
+static void TftpTimeout (void)
 {
 	if (++TftpTimeoutCount > TIMEOUT_COUNT) {
 		puts ("\nRetry count exceeded; starting again\n");
@@ -321,16 +314,15 @@ TftpTimeout (void)
 
 extern unsigned char BootType;
 
-void
-TftpStart (void)
+void TftpStart (void)
 {
 	TftpStarted=1;
 
 	if (BootFile[0] == '\0') {
-	    if (BootType == 9)
-		sprintf(default_filename, "%s","uboot.img");
+	    if (BootType == '9')
+			sprintf(default_filename, "%s","uboot.img");
 	    else
-		sprintf(default_filename, "%s","image.trx");
+			sprintf(default_filename, "%s","image.trx");
 	    tftp_filename = default_filename;
 
 		printf ("*** Warning: no boot file name; using '%s'\n",
@@ -381,7 +373,6 @@ TftpStart (void)
 
 	/* zero out server ether in case the server ip has changed */
 	memset(NetServerEther, 0, 6);
-	
    
 	TftpSend ();
 }

@@ -1,38 +1,54 @@
-                  Ralink/MediaTek U-Boot for MIPS SoC
-        RT3052/RT3352/RT3883/RT5350/MT7620/MT7621/MT7628/MT7688
+                  Ralink/MediaTek U-Boot for MT7621 MIPS SoC
                      Based on MediaTek SDK 5.0.1.0
 
+#### Info
+
+This is a fork of [db260179/u-boot-mt7621](https://gitlab.com/db260179/u-boot-mt7621)
+
+- Stripped almost everything except MT7621+SPI flash boot code
+- Focused mostly on supporting specific HW (TP-Link Archer AX23)
+- Slightly updated toolchain and menuconfig
+- Much enhanced Web Recovery functionality, additional integrity checks for uploaded data
+- More WAN/LAN Port Mapping options for Multi-WAN configurations
+- Code speed/size optimizations
+
+#### Main Features
+
+1. Press and hold the WPS button on Power-On for 2~3 sec, this will switch to Web Recovery mode. Set your Ethernet
+   ipv4 to 192.168.1.2, subnet mask 255.255.255.0 and gateway 192.168.1.1.
+
+2. Go to 192.168.1.1 from any browser and update specific partition you want.
+
+3. Press and hold the WPS button on Power-On for 5~6 seconds to perform factory reset for OpenWrt-based firmwares
+
+<img src="index.png">
+
+NOTE:
+- U-Boot will perform switch to Web Recovery mode on flash content integrity fail.
+- Alert LED(s) is blinking in Recovery mode and on erasing/flashing.
+
+#### Quick Start (GitHub-specific)
+
+- fork this repo
+- go to 'Build Custom U-Boot' action
+- select desired options (boot delay, lan/wan port mapping etc.)
+- run action and download artifacts
 
 #### Preparing Toolchain
 
-For MT7621 U-Boot:
-- extract 'toolchain/mips-2012.03.tar.bz2' to /opt (tar -xvf toolchain/mips-2012.03.tar.xz -C /opt/)
-
-For RT3XXX/MT7620/MT7628/MT7688 U-Boot:
-- extract 'toolchain/buildroot-gcc342.tar.bz2' to /opt
-
-Both toolchains require x86 (32-bit) Linux environment. If you are on x64 (64-bit)
-environment you need to do the following:
-Ubuntu 18.04 or Debian 9,10
-```
-dpkg --add-architecture i386
-
-apt install libc6:i386 libncurses5:i386 libstdc++6:i386
-```
+- extract 'toolchain/mips-2021.02.tar.xz' to ~/ (tar -xvf toolchain/mips-2021.02.tar.xz -C ~/)
 
 #### Build Instructions
 
-- Copy appropriate '.config' file (e.g. profiles/XIAOMI/MI-R4AG_SPI/.config)
+- Copy appropriate '.config' file (e.g. profiles/TP-LINK/ARCHER-AX23/.config)
   to 'uboot-5.x.x.x' dir.
 - Goto 'uboot-5.x.x.x' dir.
 - Run 'make menuconfig', choose [Exit] and confirm [Save]. This is important step!
 - Run 'make'.
-- Use image file uboot.bin (ROM mode) for NOR and SPI-flash boards.
-- Use image file uboot.img (RAM mode) for NAND-flash boards.
+- Use image file 'uboot.bin'.
 
 To clean U-Boot tree:
-- Run 'make clean'.
-- Run 'make unconfig'.
+- Run 'make distclean'.
 
 #### Build for new Boards
 
@@ -118,22 +134,3 @@ Double check the boot partition name 'Bootloader' by 'cat /proc/mtd', usually it
 
 - Do not remove power supply during flash U-Boot!!!
 - Device may be bricked due to your incorrect actions!!!
-
-#### Main Features
-
-1. Press and hold the RESET button on Power-On for 2~3 sec, this will switch to Recovery mode. Set your Ethernet
-   ipv4 to 192.168.1.2, subnet mask 255.255.255.0 and gateway 192.168.1.1.
-2. Go to 192.168.1.1 from any browser and upload or upgrade your firmware. You can also upgrade your factory and u-boot
-   partition from 192.168.1.1/factory.html and 192.168.1.1/uboot.html respectively.
-
-<img src="https://i.imgur.com/qadrqTK.png" width="300" height="177"><img src="https://i.imgur.com/xLrROI2.png" width="300" height="177"><img src="https://i.imgur.com/eoB2H5P.png" width="300" height="177">
-
-3. Also you can use TFTP client or ASUS Firmware Restoration (device IP-address is 192.168.1.1). Some devices with usb
-   port can also support Recovery from USB storage.
-
-NOTE:
-- U-Boot will perform switch to Recovery mode on flash content integrity fail.
-- Alert LED(s) is blinking in Recovery mode and on erasing/flashing.
-- To Recovery from USB storage, place FW image with a filename 'root_uImage' to first
-  FAT16/FAT32 partition, plug-in USB2 pen and switch to Recovery mode (see 3).
-
