@@ -38,6 +38,24 @@ on:
         type: boolean
         default: 'false'
 
+     cmdline:
+        description: 'U-Boot Command Line'
+        required: true
+        type: boolean
+        default: 'false'
+
+     tftp:
+        description: 'TFTP'
+        required: true
+        type: boolean
+        default: 'false'
+
+     netconsole:
+        description: 'NetConsole'
+        required: true
+        type: boolean
+        default: 'false'
+
 jobs:
   build:
     name: Build u-boot for MT7621
@@ -62,7 +80,7 @@ jobs:
  
       - name: "Apply Configuration"
         working-directory: u-boot-mt7621/uboot-5.x.x.x
-        run: bash configure.sh '${{ inputs.debug_build }}' '${{ inputs.use_mips16 }}' '${{ inputs.boot_delay }}' '${{ inputs.lan_wan_map }}' '${{ inputs.ephy_up }}'
+        run: bash configure.sh '${{ inputs.debug_build }}' '${{ inputs.use_mips16 }}' '${{ inputs.boot_delay }}' '${{ inputs.lan_wan_map }}' '${{ inputs.ephy_up }}' '${{ inputs.cmdline }}' '${{ inputs.tftp }}' '${{ inputs.netconsole }}'
 
       - name: Compile
         working-directory: u-boot-mt7621/uboot-5.x.x.x
