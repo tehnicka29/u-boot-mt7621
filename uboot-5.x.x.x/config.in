@@ -170,11 +170,12 @@ bool "Enable all Ethernet PHY" EPHY_LINK_UP n
 ##################################################################################################
 comment ""
 bool 'HTTPD server'			  HTTPD_SUPPORT		y
-bool 'TFTP'				  TFTP_SUPPORT		y
+bool 'TFTP'				  TFTP_SUPPORT		n
 bool 'BOOTP/DHCP'			  BOOTP_SUPPORT		n
 bool 'SNTP'				  SNTP_SUPPORT		n
 bool 'RARP'				  RARP_SUPPORT		n
-bool 'U-Boot CLI'			  RALINK_CMDLINE	y
+bool 'NetConsole'			  CONFIG_NETCONSOLE	n
+bool 'U-Boot CLI'			  RALINK_CMDLINE	n
 bool 'Kermit' 				  RALINK_UPGRADE_BY_SERIAL n
 bool "USB Recovery" 			  USB_RECOVERY_SUPPORT  n
 

@@ -50,7 +50,7 @@
 #define CONFIG_BAUDRATE		115200	/* 115200 by default */
 #endif
 
-#define CONFIG_NETCONSOLE      1
+//#define CONFIG_NETCONSOLE      1
 #define CONFIG_NETCONSOLE_PORT 6666
 
 /* valid baudrates */

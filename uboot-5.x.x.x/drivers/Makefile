@@ -6,7 +6,11 @@
 
 include $(TOPDIR)/config.mk
 
-OBJS-y	= rt2880_eth.o gpio.o netconsole.o
+OBJS-y	= rt2880_eth.o gpio.o
+
+ifeq ($(CONFIG_NETCONSOLE),y)
+    OBJS-y	+= netconsole.o
+endif
 
 ifeq ($(RALINK_MDIO_ACCESS_FUN),y)
     OBJS-y	+= mii_mgr.o

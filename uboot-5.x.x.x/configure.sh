@@ -5,6 +5,10 @@
 # $3 - "Boot Delay" CONFIG_BOOTDELAY=xxx
 # $4 - "None", "LLLLW" "LLLLX" "LLLWW" "LLLXX" (LAN_WAN_PARTITION=y + RALINK_PVLAN_LLL**=y )
 # $5 - "Enable All Ethernet PHY": "EPHY_LINK_UP=y
+# $6 - "U-Boot CLI"
+# $7 - "TFTP"
+# $8 - "NetConsole"
+
 
 CONFIG=.config
 
@@ -46,4 +50,25 @@ fi
 
 if [ $5 == 'true' ]; then
 	echo "EPHY_LINK_UP=y" >> $CONFIG
+else
+	echo "# EPHY_LINK_UP is not set" >> $CONFIG
 fi
+
+if [ $6 == 'true' ]; then
+	echo  "RALINK_CMDLINE=y" >> $CONFIG
+else
+	echo  "# RALINK_CMDLINE is not set" >> $CONFIG
+fi
+
+if [ $7 == 'true' ]; then
+	echo  "TFTP_SUPPORT=y" >> $CONFIG
+else
+	echo  "# TFTP_SUPPORT is not set" >> $CONFIG
+fi
+
+if [ $8 == 'true' ]; then
+	echo  "CONFIG_NETCONSOLE=y" >> $CONFIG
+else
+	echo  "# CONFIG_NETCONSOLE is not set" >> $CONFIG
+fi
+

@@ -120,9 +120,6 @@ static memblock_t *search_free(size_t size)
 	return NULL;
 }
 
-#undef DIRECTION
-#define DIRECTION prev
-
 static memblock_t *search_free_aligned(size_t alignment, size_t size)
 {
 	const freeblock_t *fb;
