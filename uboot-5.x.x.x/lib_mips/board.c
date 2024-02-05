@@ -1049,7 +1049,6 @@ void __attribute__((nomips16)) board_init_r(gd_t *id, ulong dest_addr)
 	for ( i = 0; i < timer1; i++ ) {
 		if ( tstc() != 0 ) { /* we got a key press	*/
 			BootType = getc();
-			printf( "key readed = %d\n", BootType );
 			if ( (BootType < '0' || BootType > '5') && (BootType != '7') && (BootType != '8') && (BootType != '9') )
 				BootType = '3';
 			printf( "\n\rYou choosed %c\n\n", BootType );

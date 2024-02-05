@@ -265,7 +265,7 @@ menuconfig: config.in
 	$(CONFIG_SHELL) scripts/Menuconfig config.in
 
 autoconf.h oldconfig:
-	$(CONFIG_SHELL) scripts/Menuconfig config.in --oldconfig
+	$(CONFIG_SHELL) scripts/oldconfig config.in
 
 .PHONY: clean clobber mrproper distclean unconfig menuconfig oldconfig
 
